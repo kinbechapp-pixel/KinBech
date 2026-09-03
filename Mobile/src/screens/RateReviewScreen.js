@@ -7,10 +7,13 @@ import {
   Image,
   Pressable,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { api } from '../services/api';
+import { AlertModal, showErrorAlert, showSuccessAlert } from '../components/AlertModal';
 
 const TAGS = [
   { key: 'communication', label: 'Great communication', icon: 'chatbubble-outline' },
@@ -27,6 +30,8 @@ export default function RateReviewScreen({ navigation, route }) {
   const [rating, setRating] = useState(4);
   const [review, setReview] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [alertConfig, setAlertConfig] = useState(null);
 
   // Guard against undefined colors
   if (!colors) {
@@ -39,9 +44,52 @@ export default function RateReviewScreen({ navigation, route }) {
     );
   };
 
-  const handleSubmit = () => {
-    // TODO: wire up to review submission API
-    navigation.goBack();
+  const handleSubmit = async () => {
+    if (!seller?.id) {
+      setAlertConfig(showErrorAlert({
+        title: 'Seller not found',
+        message: 'Unable to submit review for this seller.',
+        onConfirm: () => setAlertConfig(null),
+      }));
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const { error } = await api.createReview({
+        reviewedUserId: seller.id,
+        listingId: listing?.id,
+        rating,
+        review,
+        tags: selectedTags,
+      });
+      
+      setLoading(false);
+      if (error) {
+        setAlertConfig(showErrorAlert({
+          title: 'Review failed',
+          message: error,
+          onConfirm: () => setAlertConfig(null),
+        }));
+        return;
+      }
+      
+      setAlertConfig(showSuccessAlert({
+        title: 'Review Submitted',
+        message: 'Thank you for your feedback!',
+        onConfirm: () => {
+          setAlertConfig(null);
+          navigation.goBack();
+        },
+      }));
+    } catch (err) {
+      setLoading(false);
+      setAlertConfig(showErrorAlert({
+        title: 'Error',
+        message: 'Failed to submit review. Please try again.',
+        onConfirm: () => setAlertConfig(null),
+      }));
+    }
   };
 
   return (
@@ -63,13 +111,33 @@ export default function RateReviewScreen({ navigation, route }) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.avatarWrap}>
-          <Image source={{ uri: seller?.avatarUrl }} style={styles.avatar} />
+          <View style={styles.avatar}>
+            {seller?.avatarUrl ? (
+              <Image source={{ uri: seller.avatarUrl }} style={{ width: '100%', height: '100%' }} />
+            ) : (
+              <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="person" size={44} color={colors.text} />
+              </View>
+            )}
+          </View>
         </View>
         <Text style={styles.sellerName}>{seller?.name ?? 'Seller'}</Text>
         <Text style={styles.sellerRole}>Seller</Text>
 
         <View style={styles.listingCard}>
-          <Image source={{ uri: listing?.imageUrl }} style={styles.listingImage} />
+          <View style={styles.listingImage}>
+            {listing?.imageUrl || listing?.photos?.[0] ? (
+              <Image 
+                source={{ uri: listing?.imageUrl || listing?.photos?.[0] }} 
+                style={{ width: '100%', height: '100%' }} 
+                resizeMode="cover" 
+              />
+            ) : (
+              <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="cube-outline" size={32} color={colors.textMuted} />
+              </View>
+            )}
+          </View>
           <View style={styles.listingInfo}>
             <Text style={styles.listingTitle} numberOfLines={1}>
               {listing?.title}
@@ -133,17 +201,27 @@ export default function RateReviewScreen({ navigation, route }) {
           })}
         </View>
 
-        <Pressable onPress={handleSubmit}>
+        <Pressable onPress={handleSubmit} disabled={loading}>
           <LinearGradient
             colors={[colors.gradientStart, colors.gradientEnd]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.submitButton}
           >
-            <Text style={styles.submitLabel}>Submit Review</Text>
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.submitLabel}>Submit Review</Text>
+            )}
           </LinearGradient>
         </Pressable>
       </ScrollView>
+
+      <AlertModal
+        visible={!!alertConfig}
+        onClose={() => setAlertConfig(null)}
+        {...(alertConfig || {})}
+      />
     </SafeAreaView>
   );
 }
@@ -188,6 +266,7 @@ const createStyles = (colors) => ({
     height: 96,
     borderRadius: 48,
     backgroundColor: colors.surface,
+    overflow: 'hidden',
   },
   sellerName: {
     marginTop: 12,
@@ -217,6 +296,7 @@ const createStyles = (colors) => ({
     height: 84,
     borderRadius: 12,
     backgroundColor: colors.background,
+    overflow: 'hidden',
   },
   listingInfo: {
     flex: 1,
@@ -306,6 +386,7 @@ const createStyles = (colors) => ({
     borderRadius: 16,
     alignItems: 'center',
     marginTop: 28,
+    minHeight: 54,
   },
   submitLabel: {
     fontSize: 17,

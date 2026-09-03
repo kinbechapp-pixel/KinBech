@@ -136,12 +136,6 @@ async function tryUrlOnce({ baseUrl, path, options, extraHeaders, timeoutMs }) {
   };
 }
 
-const PRIMARY_CANDIDATE_MARKERS = ['10.0.2.2', '127.0.0.1', 'localhost'];
-
-function isPrimaryCandidate(baseUrl) {
-  return PRIMARY_CANDIDATE_MARKERS.some((m) => baseUrl.includes(m));
-}
-
 function buildCandidates() {
   const candidates = [];
   if (workingBaseUrl) candidates.push(workingBaseUrl);
@@ -153,20 +147,18 @@ function buildCandidates() {
   } catch {
     const primary = process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:5001';
     if (!candidates.includes(primary)) candidates.push(primary);
-    if (!candidates.includes('http://10.0.2.2:5001')) candidates.push('http://10.0.2.2:5001');
-    if (!candidates.includes('http://localhost:5001')) candidates.push('http://localhost:5001');
   }
   return candidates;
 }
 
 async function request(path, options = {}) {
   const { headers: extraHeaders, ...rest } = options;
-  const initialTimeoutMs = 10000;
+  const initialTimeoutMs = 8000;
 
   let lastData = null;
   let lastNonNetworkError = null;
 
-  for (let pass = 0; pass < 2; pass++) {
+  for (let pass = 0; pass < 1; pass++) {
     const candidates = buildCandidates();
     if (pass === 0) {
       console.log('API Request start:', path, ' candidates:', candidates);
@@ -177,12 +169,12 @@ async function request(path, options = {}) {
 
     for (let cIdx = 0; cIdx < candidates.length; cIdx++) {
       const baseUrl = candidates[cIdx];
-      const isPrimary = isPrimaryCandidate(baseUrl);
-      const attemptsPerUrl = isPrimary ? 2 : 1;
-      const baseTimeout = isPrimary ? initialTimeoutMs : 5000;
+      const isPrimary = cIdx === 0;
+      const attemptsPerUrl = isPrimary ? 1 : 1;
+      const baseTimeout = isPrimary ? initialTimeoutMs : 2000;
 
       for (let attempt = 0; attempt < attemptsPerUrl; attempt++) {
-        const timeoutMs = baseTimeout + attempt * 5000 + (pass * 2000);
+        const timeoutMs = baseTimeout + attempt * 1000 + (pass * 1000);
         const label =
           pass === 0 && cIdx === 0 && attempt === 0
             ? 'Request'
@@ -214,6 +206,12 @@ async function request(path, options = {}) {
             console.log(`Status ${result.status}; retrying same URL after ${Math.round(backoff)}ms`);
             await sleep(backoff);
             continue;
+          }
+
+          // Don't retry for 404 errors (endpoint not found)
+          if (result.status === 404) {
+            console.log('Endpoint not found (404), skipping retries');
+            break;
           }
 
           lastNonNetworkError = result.error;
@@ -313,6 +311,35 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ listingId }),
     }),
+  updatePreferences: (payload) =>
+    request('/auth/preferences', { method: 'PATCH', body: JSON.stringify(payload) }),
+  getNotifications: () => request('/notifications'),
+  createReport: (payload) =>
+    request('/reports', { method: 'POST', body: JSON.stringify(payload) }),
+  blockUser: (userId) =>
+    request(`/reports/users/${userId}/block`, { method: 'POST' }),
+  unblockUser: (userId) =>
+    request(`/reports/users/${userId}/block`, { method: 'DELETE' }),
+  getMyReports: () => request('/reports/my'),
+  createReview: (payload) =>
+    request('/reviews', { method: 'POST', body: JSON.stringify(payload) }),
+  getUserReviews: (userId) => request(`/reviews/user/${userId}`),
+  getMyReviews: () => request('/reviews/my'),
+  createReport: (payload) =>
+    request('/reports', { method: 'POST', body: JSON.stringify(payload) }),
+  blockUser: (userId) =>
+    request(`/reports/users/${userId}/block`, { method: 'POST' }),
+  unblockUser: (userId) =>
+    request(`/reports/users/${userId}/block`, { method: 'DELETE' }),
+  getMyReports: () => request('/reports/my'),
+  
+  // Seller/Store Discovery APIs
+  getSellers: (params = {}) => request(`/sellers${toQuery(params)}`),
+  getSeller: (sellerId) => request(`/sellers/${sellerId}`),
+  searchSellers: (params = {}) => request(`/sellers/search${toQuery(params)}`),
+  getFeaturedSellers: (params = {}) => request(`/sellers/featured${toQuery(params)}`),
+  getPopularSellers: (params = {}) => request(`/sellers/popular${toQuery(params)}`),
+  getNearbySellers: (params = {}) => request(`/sellers/nearby${toQuery(params)}`),
 };
 
 export default api;

@@ -4,7 +4,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   Image,
   Keyboard,
@@ -21,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ROUTES } from '../navigation/helpers';
 import { api } from '../services/api';
 import { useTheme, useThemedStyles, ThemeStatusBar } from '../theme';
+import { AlertModal, showErrorAlert, showSuccessAlert } from '../components/AlertModal';
 
 /**
  * Resolve color references (e.g., 'colors.iconBackground') to actual color values
@@ -160,6 +160,7 @@ export default function PostListingScreen({ navigation }) {
   const [photos, setPhotos] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [alertConfig, setAlertConfig] = useState(null);
 
   // Guard against undefined colors
   if (!colors) {
@@ -183,7 +184,11 @@ export default function PostListingScreen({ navigation }) {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Location permission', 'Allow location access to auto-fill your city.');
+        setAlertConfig(showErrorAlert({
+          title: 'Location permission',
+          message: 'Allow location access to auto-fill your city.',
+          onConfirm: () => setAlertConfig(null),
+        }));
         return;
       }
       const loc = await Location.getCurrentPositionAsync({
@@ -195,7 +200,11 @@ export default function PostListingScreen({ navigation }) {
       });
       const addr = geocode?.[0];
       if (!addr) {
-        Alert.alert('Could not determine location', 'Please enter location manually.');
+        setAlertConfig(showErrorAlert({
+          title: 'Could not determine location',
+          message: 'Please enter location manually.',
+          onConfirm: () => setAlertConfig(null),
+        }));
         return;
       }
       const city = addr.city || addr.subregion || addr.district || '';
@@ -212,7 +221,11 @@ export default function PostListingScreen({ navigation }) {
       }
       setLocation(parts.join(', '));
     } catch (e) {
-      Alert.alert('Location error', 'Could not fetch location. Please enter manually.');
+      setAlertConfig(showErrorAlert({
+        title: 'Location error',
+        message: 'Could not fetch location. Please enter manually.',
+        onConfirm: () => setAlertConfig(null),
+      }));
     } finally {
       setLocating(false);
     }
@@ -295,19 +308,35 @@ export default function PostListingScreen({ navigation }) {
 
   const validateStep1 = () => {
     if (!mainPhoto) {
-      Alert.alert('Main photo required', 'Add a clear main photo for your listing.');
+      setAlertConfig(showErrorAlert({
+        title: 'Main photo required',
+        message: 'Add a clear main photo for your listing.',
+        onConfirm: () => setAlertConfig(null),
+      }));
       return false;
     }
     if (!title.trim()) {
-      Alert.alert('Title required', 'Enter a title for your item.');
+      setAlertConfig(showErrorAlert({
+        title: 'Title required',
+        message: 'Enter a title for your item.',
+        onConfirm: () => setAlertConfig(null),
+      }));
       return false;
     }
     if (!price.trim()) {
-      Alert.alert('Price required', 'Enter a price in NPR.');
+      setAlertConfig(showErrorAlert({
+        title: 'Price required',
+        message: 'Enter a price in NPR.',
+        onConfirm: () => setAlertConfig(null),
+      }));
       return false;
     }
     if (!location.trim()) {
-      Alert.alert('Location required', 'Enter your location.');
+      setAlertConfig(showErrorAlert({
+        title: 'Location required',
+        message: 'Enter your location.',
+        onConfirm: () => setAlertConfig(null),
+      }));
       return false;
     }
     return true;
@@ -337,7 +366,11 @@ export default function PostListingScreen({ navigation }) {
     });
     setSubmitting(false);
     if (error) {
-      Alert.alert('Could not post listing', error);
+      setAlertConfig(showErrorAlert({
+        title: 'Could not post listing',
+        message: error,
+        onConfirm: () => setAlertConfig(null),
+      }));
       return;
     }
     navigation.navigate(ROUTES.LISTING_SUCCESS, {
@@ -505,11 +538,19 @@ export default function PostListingScreen({ navigation }) {
                             style={styles.extraSlotVideoOnly}
                             onPress={() => {
                               if (videoCount >= MAX_LISTING_VIDEOS) {
-                                Alert.alert('Video limit', 'Only 1 video allowed. Remove existing first.');
+                                setAlertConfig(showErrorAlert({
+                                  title: 'Video limit',
+                                  message: 'Only 1 video allowed. Remove existing first.',
+                                  onConfirm: () => setAlertConfig(null),
+                                }));
                                 return;
                               }
                               if (!mainPhoto) {
-                                Alert.alert('Main photo first', 'Please add a main photo before adding video.');
+                                setAlertConfig(showErrorAlert({
+                                  title: 'Main photo first',
+                                  message: 'Please add a main photo before adding video.',
+                                  onConfirm: () => setAlertConfig(null),
+                                }));
                                 return;
                               }
                               pickVideo(slotIndex);
@@ -525,11 +566,19 @@ export default function PostListingScreen({ navigation }) {
                             style={styles.extraSlotPhotoOnly}
                             onPress={() => {
                               if (photoCount >= MAX_LISTING_PHOTOS) {
-                                Alert.alert('Limit reached', `You can add up to ${MAX_LISTING_PHOTOS} photos.`);
+                                setAlertConfig(showErrorAlert({
+                                  title: 'Limit reached',
+                                  message: `You can add up to ${MAX_LISTING_PHOTOS} photos.`,
+                                  onConfirm: () => setAlertConfig(null),
+                                }));
                                 return;
                               }
                               if (!mainPhoto) {
-                                Alert.alert('Main photo first', 'Please add a main photo before extra images.');
+                                setAlertConfig(showErrorAlert({
+                                  title: 'Main photo first',
+                                  message: 'Please add a main photo before extra images.',
+                                  onConfirm: () => setAlertConfig(null),
+                                }));
                                 return;
                               }
                               pickPhoto(slotIndex);

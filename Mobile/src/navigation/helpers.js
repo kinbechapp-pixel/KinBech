@@ -7,6 +7,7 @@ export const ROUTES = {
   MAIN_TABS: 'MainTabs',
   ALL_CATEGORIES: 'AllCategories',
   CATEGORY: 'Category',
+  EXPLORE: 'Explore',
   SEARCH_RESULTS: 'SearchResults',
   ITEM_DETAIL: 'ItemDetail',
   POST_LISTING: 'PostListing',
@@ -28,7 +29,7 @@ export const ROUTES = {
 
 export const TABS = {
   HOME: 'Home',
-  EXPLORE: 'Categories',
+  EXPLORE: 'Explore',
   POST: 'Post',
   CHATS: 'Chats',
   PROFILE: 'Profile',

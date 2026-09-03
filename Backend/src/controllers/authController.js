@@ -221,4 +221,30 @@ async function updateMe(req, res, next) {
   }
 }
 
-module.exports = { signup, login, verifyOtp, me, updateMe, completeSignup };
+async function updatePreferences(req, res, next) {
+  try {
+    if (req.body.notifications !== undefined) {
+      req.user.preferences = req.user.preferences || {};
+      req.user.preferences.notifications = Boolean(req.body.notifications);
+    }
+    if (req.body.language !== undefined) {
+      req.user.preferences = req.user.preferences || {};
+      req.user.preferences.language = String(req.body.language);
+    }
+    if (req.body.currency !== undefined) {
+      req.user.preferences = req.user.preferences || {};
+      req.user.preferences.currency = String(req.body.currency);
+    }
+
+    await req.user.save();
+    const token = signUserToken(req.user);
+    return res.json({
+      token,
+      user: publicUser(req.user),
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = { signup, login, verifyOtp, me, updateMe, completeSignup, updatePreferences };

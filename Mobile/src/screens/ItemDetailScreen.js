@@ -27,30 +27,8 @@ import { categoryIcon, toDetailItem } from '../utils/listing';
 import { useTheme, useThemedStyles, ThemeStatusBar } from '../theme';
 import { useSharedTransition, BEZIER_EASE_OUT } from '../context/SharedTransitionContext';
 
-/**
- * Resolve color references (e.g., 'colors.iconBackground') to actual color values
- * @param {string} colorRef - Color reference string or direct color value
- * @param {object} colors - Theme colors object
- * @returns {string} Resolved color value
- */
-function resolveColor(colorRef, colors) {
-  if (typeof colorRef === 'string' && colorRef.startsWith('colors.')) {
-    const colorKey = colorRef.replace('colors.', '');
-    return colors[colorKey] || colorRef;
-  }
-  return colorRef;
-}
-
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const IMAGE_HEIGHT = 380;
-
-const PHOTOS = [
-  { bg: 'photoDark1', icon: 'laptop' },
-  { bg: 'photoDark2', icon: 'laptop-outline' },
-  { bg: 'photoDark3', icon: 'laptop-outline' },
-  { bg: 'photoDark4', icon: 'laptop-outline' },
-  { bg: 'photoDark5', icon: 'laptop-outline' },
-];
 
 export default function ItemDetailScreen({ navigation, route }) {
   const { colors } = useTheme();
@@ -91,6 +69,30 @@ export default function ItemDetailScreen({ navigation, route }) {
     };
   }, [listingId]);
 
+  if (!listing) {
+    return (
+      <View style={styles.root}>
+        <ThemeStatusBar variant="header" />
+        <View style={styles.emptyState}>
+          <View style={styles.emptyIconWrap}>
+            <Text style={[styles.sparkle, { top: 4, left: 8 }]}>✦</Text>
+            <Text style={[styles.sparkle, { top: 20, right: 4, fontSize: 10 }]}>✦</Text>
+            <Ionicons name="cube-outline" size={64} color={colors.textMuted} />
+          </View>
+          <Text style={styles.emptyTitle}>Item Not Found</Text>
+          <Text style={styles.emptySubtitle}>This item may have been removed or is no longer available</Text>
+          <Pressable
+            style={styles.backBtn}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={20} color={colors.primary} />
+            <Text style={styles.backBtnText}>Go Back</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
   const item = toDetailItem(listing) || {
     title: 'Listing',
     price: '',
@@ -108,10 +110,7 @@ export default function ItemDetailScreen({ navigation, route }) {
   const photoUris = (item.photos || []).filter(Boolean);
   const resolvedPhotos = photoUris.length
     ? photoUris.map((uri) => ({ uri, icon: categoryIcon(listing?.category) }))
-    : (PHOTOS || []).map((photo) => ({
-        ...photo,
-        bg: resolveColor(`colors.${photo.bg}`, colors),
-      }));
+    : [{ icon: categoryIcon(listing?.category), bg: colors.photoDark1 }];
 
   const onScroll = (e) => {
     const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
@@ -746,5 +745,51 @@ const createStyles = (colors) => ({
     fontSize: 16,
     fontWeight: '700',
     color: colors.onPrimary,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  emptyIconWrap: {
+    width: 100,
+    height: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sparkle: {
+    position: 'absolute',
+    fontSize: 13,
+    color: colors.primary,
+    opacity: 0.5,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.text,
+    marginTop: 16,
+  },
+  emptySubtitle: {
+    marginTop: 8,
+    fontSize: 14,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: colors.link,
+  },
+  backBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.link,
   },
 });

@@ -83,8 +83,18 @@ export function resolveListingCoords(listing) {
   return null;
 }
 
-export function attachDistanceToCard(cardItem, userCoords) {
+export function attachDistanceToCard(cardItem, userCoords, currentUserId) {
   if (!cardItem) return cardItem;
+  
+  // Don't show distance for own items
+  if (currentUserId && cardItem.sellerId && String(cardItem.sellerId) === String(currentUserId)) {
+    return {
+      ...cardItem,
+      distanceKm: null,
+      distanceLabel: null,
+    };
+  }
+  
   if (cardItem.distanceKm != null && Number.isFinite(Number(cardItem.distanceKm))) {
     return {
       ...cardItem,
@@ -112,6 +122,7 @@ export function attachDistanceToCard(cardItem, userCoords) {
 export function toCardItem(listing) {
   if (!listing) return null;
   const coords = resolveListingCoords(listing);
+  const seller = listing.seller || {};
   return {
     id: listing.id,
     title: listing.title,
@@ -125,6 +136,7 @@ export function toCardItem(listing) {
     distanceKm: listing.distanceKm != null ? Number(listing.distanceKm) : null,
     distanceLabel: formatDistanceLabel(listing.distanceKm),
     coordinates: coords,
+    sellerId: seller.id,
     listing,
   };
 }

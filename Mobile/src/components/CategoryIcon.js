@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View, Animated } from 'react-native';
+import { useRef } from 'react';
 import { useTheme, useThemedStyles } from '../theme';
 
 const createStyles = (colors) => ({
@@ -37,19 +38,47 @@ export default function CategoryIcon({
   const styles = useThemedStyles(createStyles);
   const iconBackground = color ?? colors.primary ?? '#5B39C6';
   const onPrimaryColor = colors.onPrimary ?? colors.white ?? '#FFFFFF';
+  
+  // Micro-animations
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.9,
+      useNativeDriver: true,
+      tension: 300,
+      friction: 10,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 300,
+      friction: 10,
+    }).start();
+  };
 
   return (
-    <Pressable onPress={onPress} style={styles.wrap}>
-      <View style={[styles.icon, { backgroundColor: iconBackground }]}>
-        {icon ? (
-          <Ionicons name={icon} size={22} color={onPrimaryColor} />
-        ) : (
-          <Text style={styles.emoji}>{emoji}</Text>
-        )}
-      </View>
-      <Text numberOfLines={1} style={styles.label}>
-        {label}
-      </Text>
-    </Pressable>
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <Pressable 
+        onPress={onPress} 
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={styles.wrap}
+      >
+        <View style={[styles.icon, { backgroundColor: iconBackground }]}>
+          {icon ? (
+            <Ionicons name={icon} size={22} color={onPrimaryColor} />
+          ) : (
+            <Text style={styles.emoji}>{emoji}</Text>
+          )}
+        </View>
+        <Text numberOfLines={1} style={styles.label}>
+          {label}
+        </Text>
+      </Pressable>
+    </Animated.View>
   );
 }

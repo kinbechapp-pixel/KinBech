@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -6,9 +6,11 @@ import {
   ScrollView,
   Text,
   View,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { navigateToTab, openItemDetail, ROUTES, TABS } from '../navigation/helpers';
+import { api } from '../services/api';
 import { useTheme, useThemedStyles, ThemeStatusBar } from '../theme';
 
 /**
@@ -32,6 +34,24 @@ export default function NotificationsScreen({ navigation }) {
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState('all');
+  const [notifications, setNotifications] = useState(NOTIFICATIONS);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      setLoading(true);
+      const { data, error } = await api.getNotifications();
+      if (!active) return;
+      setLoading(false);
+      if (!error && data?.notifications) {
+        setNotifications(data.notifications);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Guard against undefined colors
   if (!colors) {
@@ -39,9 +59,9 @@ export default function NotificationsScreen({ navigation }) {
   }
 
   // Resolve notification colors dynamically
-  const resolvedNotifications = (NOTIFICATIONS || []).map(notification => ({
+  const resolvedNotifications = (notifications || []).map(notification => ({
     ...notification,
-    iconBg: resolveColor(`colors.${notification.iconBg}`, colors)
+    iconBg: resolveColor(`colors.${notification.iconBg || 'iconBackground'}`, colors)
   }));
 
   const list = tab === 'unread' ? resolvedNotifications.filter((n) => n.unread) : resolvedNotifications;
@@ -94,7 +114,11 @@ export default function NotificationsScreen({ navigation }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-        {list.length > 0 ? (
+        {loading ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : list.length > 0 ? (
           (list || []).map((item) => (
             <Pressable
               key={item.id}
@@ -259,5 +283,9 @@ const createStyles = (colors) => ({
     color: colors.textMuted,
     textAlign: 'center',
     marginTop: 4,
+  },
+  loadingState: {
+    alignItems: 'center',
+    paddingVertical: 60,
   },
 });

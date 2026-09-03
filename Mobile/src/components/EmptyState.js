@@ -62,12 +62,41 @@ const createStyles = (colors) => ({
     textAlign: 'center',
     marginBottom: 12,
   },
+  compactTitle: {
+    fontSize: 20,
+    marginBottom: 8,
+  },
   body: {
     fontSize: 15,
     color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 32,
+  },
+  compactBody: {
+    fontSize: 14,
+    lineHeight: 21,
+    marginBottom: 20,
+  },
+  compactWrap: {
+    flexGrow: 1,
+    minHeight: 280,
+    paddingVertical: 36,
+    paddingHorizontal: 20,
+  },
+  iconCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  compactButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 22,
+    borderRadius: 14,
+    alignSelf: 'stretch',
   },
   buttonWrap: {
     width: '100%',
@@ -137,16 +166,29 @@ export default function EmptyState({
   buttonLabel,
   onButtonPress,
   showIllustration = true,
+  compact = false,
+  icon = 'cube-outline',
 }) {
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
 
   return (
-    <View style={styles.container}>
-      {showIllustration && <BoxIllustration />}
+    <View style={[styles.container, compact && styles.compactWrap]}>
+      {compact ? (
+        <LinearGradient
+          colors={colors.gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.iconCircle}
+        >
+          <Ionicons name={icon} size={40} color={colors.onPrimary} />
+        </LinearGradient>
+      ) : (
+        showIllustration && <BoxIllustration />
+      )}
 
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.body}>{body}</Text>
+      <Text style={[styles.title, compact && styles.compactTitle]}>{title}</Text>
+      <Text style={[styles.body, compact && styles.compactBody]}>{body}</Text>
 
       {buttonLabel ? (
         <Pressable onPress={onButtonPress} style={styles.buttonWrap}>
@@ -154,7 +196,7 @@ export default function EmptyState({
             colors={colors.gradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={styles.button}
+            style={[styles.button, compact && styles.compactButton]}
           >
             <Text style={styles.buttonLabel}>{buttonLabel}</Text>
             <Ionicons name="arrow-forward" size={20} color={colors.onPrimary} />

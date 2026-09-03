@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, memo, useCallback, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { Dimensions, Image, Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { Dimensions, Image, Pressable, Text, View, useWindowDimensions, Animated } from 'react-native';
 import { useSharedTransition } from '../context/SharedTransitionContext';
 import { useTheme, useThemedStyles } from '../theme';
 
@@ -30,6 +30,10 @@ function resolveColor(colorRef, colors) {
 }
 
 const createStyles = (colors) => ({
+  cardWrapper: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
   card: {
     backgroundColor: colors.surface,
     borderRadius: 16,
@@ -73,6 +77,9 @@ const createStyles = (colors) => ({
     zIndex: 2,
   },
   viewsBadge: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
@@ -80,6 +87,7 @@ const createStyles = (colors) => ({
     paddingVertical: 4,
     borderRadius: 10,
     backgroundColor: 'rgba(0,0,0,0.6)',
+    zIndex: 2,
   },
   viewsText: {
     fontSize: 10,
@@ -171,7 +179,7 @@ const createStyles = (colors) => ({
   },
 });
 
-export default function ProductCard({
+const ProductCard = memo(function ProductCard({
   title,
   price,
   location,
@@ -198,85 +206,138 @@ export default function ProductCard({
   const imageHeight = compact ? Math.round((cardWidth || peekCardWidth(screenWidth)) * 0.78) : 110;
   const iconSize = compact ? 28 : 42;
 
+  // Micro-animations
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const heartScaleAnim = useRef(new Animated.Value(1)).current;
+
   const photoTag = sharedId ? `item.${sharedId}.photo` : undefined;
   const titleTag = sharedId ? `item.${sharedId}.title` : undefined;
   const priceTag = sharedId ? `item.${sharedId}.price` : undefined;
 
-  const handlePress = () => {
+  const handlePress = useCallback(() => {
     if (!onPress) return;
     tryBeginNavigation(sharedId, onPress);
-  };
+  }, [onPress, sharedId, tryBeginNavigation]);
+
+  const handleToggleSave = useCallback(() => {
+    // Heart animation
+    Animated.sequence([
+      Animated.timing(heartScaleAnim, {
+        toValue: 1.3,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(heartScaleAnim, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    if (onToggleSave) {
+      onToggleSave();
+      return;
+    }
+    setSavedLocal((value) => !value);
+  }, [onToggleSave, heartScaleAnim]);
+
+  const handlePressIn = useCallback(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.97,
+      useNativeDriver: true,
+      tension: 300,
+      friction: 10,
+    }).start();
+  }, [scaleAnim]);
+
+  const handlePressOut = useCallback(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 300,
+      friction: 10,
+    }).start();
+  }, [scaleAnim]);
 
   return (
-    <Pressable
-      onPress={handlePress}
-      style={[styles.card, cardWidth ? { width: cardWidth } : null]}
+    <Animated.View
+      style={[
+        styles.cardWrapper,
+        cardWidth ? { width: cardWidth } : null,
+        { transform: [{ scale: scaleAnim }] },
+      ]}
     >
-      <View style={[styles.image, { backgroundColor: bgColor, height: imageHeight }]}>
-        {photo ? (
-          <Image
-            source={{ uri: photo }}
-            style={styles.imageFill}
-            resizeMode="cover"
-            sharedTransitionTag={photoTag}
-          />
-        ) : (
-          <Ionicons
-            name={icon}
-            size={iconSize}
-            color={colors.link}
-            sharedTransitionTag={photoTag}
-          />
-        )}
+      <Pressable
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={styles.card}
+      >
+        <View style={[styles.image, { backgroundColor: bgColor, height: imageHeight }]}>
+          {photo ? (
+            <Image
+              source={{ uri: photo }}
+              style={styles.imageFill}
+              resizeMode="cover"
+              sharedTransitionTag={photoTag}
+            />
+          ) : (
+            <Ionicons
+              name={icon}
+              size={iconSize}
+              color={colors.link}
+              sharedTransitionTag={photoTag}
+            />
+          )}
 
-        <Pressable
-          onPress={() => {
-            if (onToggleSave) {
-              onToggleSave();
-              return;
-            }
-            setSavedLocal((value) => !value);
-          }}
-          style={styles.heart}
-          hitSlop={8}
-        >
-          <Ionicons
-            name={saved ? 'heart' : 'heart-outline'}
-            size={16}
-            color={saved ? colors.favorite : colors.textMuted}
-          />
-        </Pressable>
-      </View>
-      <View style={styles.body}>
-        <Text numberOfLines={1} style={styles.title} sharedTransitionTag={titleTag}>
-          {title}
-        </Text>
-        <View style={styles.priceRow}>
-          <Text style={styles.price} sharedTransitionTag={priceTag}>{price}</Text>
-          <View style={styles.priceMeta}>
-            {distanceLabel && (
-              <View style={styles.priceMetaItem}>
-                <Ionicons name="navigate" size={10} color={colors.textMuted} style={styles.priceMetaIcon} />
-                <Text style={styles.priceMetaText}>{distanceLabel}</Text>
-              </View>
-            )}
-            {views != null && Number(views) >= 0 && (
-              <View style={styles.priceMetaItem}>
-                <Ionicons name="eye" size={10} color={colors.textMuted} style={styles.priceMetaIcon} />
-                <Text style={styles.priceMetaText}>
-                  {views >= 1000 ? `${(views / 1000).toFixed(1)}k` : views}
-                </Text>
-              </View>
-            )}
-          </View>
+          <Animated.View style={{ transform: [{ scale: heartScaleAnim }] }}>
+            <Pressable
+              onPress={handleToggleSave}
+              style={styles.heart}
+              hitSlop={8}
+            >
+              <Ionicons
+                name={saved ? 'heart' : 'heart-outline'}
+                size={16}
+                color={saved ? colors.favorite : colors.textMuted}
+              />
+            </Pressable>
+          </Animated.View>
+
+          {views != null && Number(views) >= 0 && (
+            <View style={styles.viewsBadge}>
+              <Ionicons name="eye" size={10} color="#fff" />
+              <Text style={styles.viewsText}>
+                {views >= 1000 ? `${(views / 1000).toFixed(1)}k` : views}
+              </Text>
+            </View>
+          )}
         </View>
-        {location ? (
-          <View style={styles.locationRow}>
-            <Ionicons name="location-outline" size={12} color={colors.textSecondary} />
-            <Text style={styles.location} numberOfLines={1}>{location}</Text>
+        <View style={styles.body}>
+          <Text numberOfLines={1} style={styles.title} sharedTransitionTag={titleTag}>
+            {title}
+          </Text>
+          <View style={styles.priceRow}>
+            <Text style={styles.price} sharedTransitionTag={priceTag}>{price}</Text>
+            <View style={styles.priceMeta}>
+              {distanceLabel && (
+                <View style={styles.priceMetaItem}>
+                  <Ionicons name="navigate" size={10} color={colors.textMuted} style={styles.priceMetaIcon} />
+                  <Text style={styles.priceMetaText}>{distanceLabel}</Text>
+                </View>
+              )}
+            </View>
           </View>
-        ) : null}
-      </View>
-    </Pressable>
+          {location ? (
+            <View style={styles.locationRow}>
+              <Ionicons name="location-outline" size={12} color={colors.textSecondary} />
+              <Text style={styles.location} numberOfLines={1}>{location}</Text>
+            </View>
+          ) : null}
+        </View>
+      </Pressable>
+    </Animated.View>
   );
-}
+});
+
+export default ProductCard;

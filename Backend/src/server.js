@@ -7,16 +7,17 @@ const PORT = process.env.PORT || 5001;
 const HOST = process.env.HOST || '0.0.0.0';
 
 async function start() {
-  await connectDb();
-  const { seedIfEmpty } = require('./utils/seed');
-  await seedIfEmpty();
-  app.listen(PORT, HOST, () => {
-    console.log(`KinBech API running on http://${HOST}:${PORT}`);
-    console.log(`For local development: http://localhost:${PORT}`);
-  });
+  try {
+    await connectDb();
+    app.listen(PORT, HOST, () => {
+      console.log(`✅ KinBech API running on http://${HOST}:${PORT}`);
+      console.log(`📱 For local development: http://localhost:${PORT}`);
+      console.log(`🔗 Mobile app should connect to port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
 }
 
-start().catch((error) => {
-  console.error('Failed to start server', error);
-  process.exit(1);
-});
+start();

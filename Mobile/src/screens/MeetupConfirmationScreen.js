@@ -22,8 +22,10 @@ const createStyles = (colors) => ({
   },
 });
 
-export default function MeetupConfirmationScreen({ navigation }) {
+export default function MeetupConfirmationScreen({ navigation, route }) {
   const styles = useThemedStyles(createStyles);
+  const seller = route?.params?.seller;
+  const listing = route?.params?.listing;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -34,8 +36,13 @@ export default function MeetupConfirmationScreen({ navigation }) {
         title="Rate Seller"
         onPress={() =>
           navigation.navigate(ROUTES.RATE_REVIEW, {
-            seller: { name: 'Suman Shrestha' },
-            listing: { title: 'iPhone 13 128GB', subtitle: '128GB • Good condition', price: 34500 },
+            seller: { name: seller?.name || 'Seller' },
+            listing: {
+              title: listing?.title || 'Listing',
+              subtitle: listing?.condition || '',
+              price: listing?.price,
+              imageUrl: listing?.photos?.[0] || listing?.imageUrl,
+            },
           })
         }
       />

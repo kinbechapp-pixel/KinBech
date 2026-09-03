@@ -19,6 +19,8 @@ import { openItemDetail, ROUTES } from '../navigation/helpers';
 import { api } from '../services/api';
 import { attachDistanceToCard, toCardItem } from '../utils/listing';
 import { useTheme, useThemedStyles, ThemeStatusBar } from '../theme';
+import { useAuth } from '../context/AuthContext';
+import { Skeleton, ProductCardSkeleton } from '../components/SkeletonLoader';
 
 const DEFAULT_CATEGORIES = [
   { label: 'Mobiles', icon: 'phone-portrait-outline', tint: '#5B39C6' },
@@ -38,6 +40,7 @@ export default function CategoryScreen({ navigation, route }) {
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
   const { width: windowWidth } = useWindowDimensions();
+  const { user } = useAuth();
   const initialCategory = route?.params?.category;
 
   const [allListings, setAllListings] = useState([]);
@@ -45,6 +48,7 @@ export default function CategoryScreen({ navigation, route }) {
   const [activeCategory, setActiveCategory] = useState(null);
   const paneAnim = useRef(new Animated.Value(0)).current;
   const cardAnims = useRef(new Map()).current;
+  const sidebarItemAnims = useRef(new Map()).current;
 
   const triggerPaneAnim = useCallback(() => {
     paneAnim.stopAnimation();
@@ -63,6 +67,13 @@ export default function CategoryScreen({ navigation, route }) {
     }
     return cardAnims.get(id);
   }, [cardAnims]);
+
+  const getSidebarItemAnim = useCallback((label) => {
+    if (!sidebarItemAnims.has(label)) {
+      sidebarItemAnims.set(label, new Animated.Value(1));
+    }
+    return sidebarItemAnims.get(label);
+  }, [sidebarItemAnims]);
 
   const triggerCardsAnim = useCallback((itemIds) => {
     const toClean = [];
@@ -135,7 +146,7 @@ export default function CategoryScreen({ navigation, route }) {
           setAllListings([]);
         } else {
           const raw = (data?.listings || []).map(toCardItem).filter(Boolean);
-          const withDistance = raw.map((it) => attachDistanceToCard(it, coords));
+          const withDistance = raw.map((it) => attachDistanceToCard(it, coords, user?.id));
           setAllListings(withDistance);
         }
         setLoading(false);
@@ -230,7 +241,37 @@ export default function CategoryScreen({ navigation, route }) {
 
       <View style={[styles.splitWrap, { backgroundColor: colors.background }]}>
         {loading ? (
-          <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />
+          <View style={styles.split}>
+            <View style={[styles.sidebar, { backgroundColor: colors.iconBackground }]}>
+              <ScrollView
+                contentContainerStyle={styles.sidebarContent}
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled
+              >
+                {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                  <View key={i} style={styles.sideItem}>
+                    <Skeleton width={36} height={36} borderRadius={12} />
+                    <Skeleton width={40} height={10} borderRadius={4} />
+                    <Skeleton width={20} height={9} borderRadius={4} />
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+            <View style={styles.itemsPane}>
+              <View style={styles.itemsHeader}>
+                <Skeleton width={100} height={15} borderRadius={4} />
+                <Skeleton width={22} height={20} borderRadius={10} />
+              </View>
+              <View style={styles.itemsGridWrap}>
+                <View style={styles.itemsGrid}>
+                  {[1, 2, 3, 4, 5, 6].map((i) => {
+                    const skeletonCardWidth = Math.floor((Math.max(windowWidth - SIDEBAR_WIDTH, 160) - GRID_PADDING * 2 - GRID_GUTTER) / 2);
+                    return <ProductCardSkeleton key={i} width={skeletonCardWidth} />;
+                  })}
+                </View>
+              </View>
+            </View>
+          </View>
         ) : (
           <View style={styles.split}>
             <View style={[styles.sidebar, { backgroundColor: colors.iconBackground }]}>
@@ -241,52 +282,69 @@ export default function CategoryScreen({ navigation, route }) {
               >
                 {categories.map((cat) => {
                   const isActive = cat.label === activeCategory;
+                  const itemAnim = getSidebarItemAnim(cat.label);
                   return (
-                    <Pressable
-                      key={cat.label}
-                      style={[
-                        styles.sideItem,
-                        isActive && { backgroundColor: colors.background },
-                      ]}
-                      onPress={() => handleCategoryChange(cat.label)}
-                    >
-                      {isActive && (
+                    <Animated.View key={cat.label} style={{ transform: [{ scale: itemAnim }] }}>
+                      <Pressable
+                        style={[
+                          styles.sideItem,
+                          isActive && { backgroundColor: colors.background },
+                        ]}
+                        onPress={() => {
+                          // Micro-animation for press
+                          Animated.sequence([
+                            Animated.timing(itemAnim, {
+                              toValue: 0.95,
+                              duration: 50,
+                              useNativeDriver: true,
+                            }),
+                            Animated.timing(itemAnim, {
+                              toValue: 1,
+                              duration: 150,
+                              useNativeDriver: true,
+                            }),
+                          ]).start();
+                          handleCategoryChange(cat.label);
+                        }}
+                      >
+                        {isActive && (
+                          <View
+                            style={[styles.sideIndicator, { backgroundColor: colors.primary }]}
+                          />
+                        )}
                         <View
-                          style={[styles.sideIndicator, { backgroundColor: colors.primary }]}
-                        />
-                      )}
-                      <View
-                        style={[
-                          styles.sideIcon,
-                          {
-                            backgroundColor: isActive
-                              ? `${cat.tint}1F`
-                              : colors.surface,
-                          },
-                        ]}
-                      >
-                        <Ionicons
-                          name={cat.icon}
-                          size={18}
-                          color={isActive ? cat.tint : colors.textMuted}
-                        />
-                      </View>
-                      <Text
-                        numberOfLines={2}
-                        style={[
-                          styles.sideLabel,
-                          isActive && {
-                            color: colors.text,
-                            fontWeight: '800',
-                          },
-                        ]}
-                      >
-                        {cat.label}
-                      </Text>
-                      <Text style={styles.sideCount}>
-                        {cat.count || 0}
-                      </Text>
-                    </Pressable>
+                          style={[
+                            styles.sideIcon,
+                            {
+                              backgroundColor: isActive
+                                ? `${cat.tint}1F`
+                                : colors.surface,
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name={cat.icon}
+                            size={18}
+                            color={isActive ? cat.tint : colors.textMuted}
+                          />
+                        </View>
+                        <Text
+                          numberOfLines={2}
+                          style={[
+                            styles.sideLabel,
+                            isActive && {
+                              color: colors.text,
+                              fontWeight: '800',
+                            },
+                          ]}
+                        >
+                          {cat.label}
+                        </Text>
+                        <Text style={styles.sideCount}>
+                          {cat.count || 0}
+                        </Text>
+                      </Pressable>
+                    </Animated.View>
                   );
                 })}
               </ScrollView>

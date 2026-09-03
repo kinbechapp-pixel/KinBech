@@ -7,11 +7,13 @@ import {
   Pressable,
   ScrollView,
   Switch,
-  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { api } from '../services/api';
+import { AlertModal, showErrorAlert, showSuccessAlert } from '../components/AlertModal';
 
 /**
  * Resolve color references (e.g., 'colors.iconBackground') to actual color values
@@ -76,6 +78,8 @@ export default function ReportBlockUserScreen({ navigation, route }) {
   const [selectedReason, setSelectedReason] = useState(null);
   const [details, setDetails] = useState('');
   const [blockUser, setBlockUser] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [alertConfig, setAlertConfig] = useState(null);
 
   // Resolve reason colors dynamically
   const resolvedReasons = (REASONS || []).map(reason => ({
@@ -84,13 +88,59 @@ export default function ReportBlockUserScreen({ navigation, route }) {
     iconColor: resolveColor(`colors.${reason.iconColor}`, colors)
   }));
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!selectedReason) {
-      Alert.alert('Select a reason', 'Please choose why you are reporting this user.');
+      setAlertConfig(showErrorAlert({
+        title: 'Select a reason',
+        message: 'Please choose why you are reporting this user.',
+        onConfirm: () => setAlertConfig(null),
+      }));
       return;
     }
-    // TODO: wire up to report submission API
-    navigation.goBack();
+    if (!userId) {
+      setAlertConfig(showErrorAlert({
+        title: 'User not found',
+        message: 'Unable to report this user.',
+        onConfirm: () => setAlertConfig(null),
+      }));
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const { error } = await api.createReport({
+        reportedUserId: userId,
+        reason: selectedReason,
+        details: details,
+        blockUser: blockUser,
+      });
+      
+      setLoading(false);
+      if (error) {
+        setAlertConfig(showErrorAlert({
+          title: 'Report failed',
+          message: error,
+          onConfirm: () => setAlertConfig(null),
+        }));
+        return;
+      }
+      
+      setAlertConfig(showSuccessAlert({
+        title: 'Report Submitted',
+        message: 'Thank you for helping keep our community safe.',
+        onConfirm: () => {
+          setAlertConfig(null);
+          navigation.goBack();
+        },
+      }));
+    } catch (err) {
+      setLoading(false);
+      setAlertConfig(showErrorAlert({
+        title: 'Error',
+        message: 'Failed to submit report. Please try again.',
+        onConfirm: () => setAlertConfig(null),
+      }));
+    }
   };
 
   return (
@@ -187,15 +237,21 @@ export default function ReportBlockUserScreen({ navigation, route }) {
           />
         </View>
 
-        <Pressable onPress={handleSubmit}>
+        <Pressable onPress={handleSubmit} disabled={loading}>
           <LinearGradient
             colors={colors.reportGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.submitButton}
           >
-            <Ionicons name="shield-checkmark-outline" size={18} color={colors.white} />
-            <Text style={styles.submitLabel}>Submit Report</Text>
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons name="shield-checkmark-outline" size={18} color={colors.white} />
+                <Text style={styles.submitLabel}>Submit Report</Text>
+              </>
+            )}
           </LinearGradient>
         </Pressable>
 
@@ -203,6 +259,12 @@ export default function ReportBlockUserScreen({ navigation, route }) {
           <Text style={styles.cancelLabel}>Cancel</Text>
         </Pressable>
       </ScrollView>
+
+      <AlertModal
+        visible={!!alertConfig}
+        onClose={() => setAlertConfig(null)}
+        {...(alertConfig || {})}
+      />
     </SafeAreaView>
   );
 }
@@ -385,6 +447,7 @@ const createStyles = (colors) => ({
     gap: 8,
     paddingVertical: 18,
     borderRadius: 16,
+    minHeight: 54,
   },
   submitLabel: {
     fontSize: 17,

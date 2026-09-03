@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { Image } from 'react-native';
+import { Image, Modal } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   Pressable,
@@ -18,81 +18,6 @@ import { formatPrice } from '../utils/listing';
 import { useTheme, useThemedStyles, ThemeStatusBar } from '../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-const DEMO_LISTINGS = [
-  {
-    _id: 'demo-1',
-    id: 'demo-1',
-    title: 'Wireless Earbuds',
-    price: 2499,
-    location: 'Kathmandu',
-    status: 'active',
-    rating: 4.7,
-    reviews: 32,
-    photos: [],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    _id: 'demo-2',
-    id: 'demo-2',
-    title: 'Smart Watch',
-    price: 3999,
-    location: 'Pokhara',
-    status: 'active',
-    rating: 4.5,
-    reviews: 28,
-    photos: [],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    _id: 'demo-3',
-    id: 'demo-3',
-    title: 'Sport Shoes',
-    price: 2200,
-    location: 'Kathmandu',
-    status: 'active',
-    rating: 4.6,
-    reviews: 45,
-    photos: [],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    _id: 'demo-4',
-    id: 'demo-4',
-    title: 'Backpack',
-    price: 1499,
-    location: 'Lalitpur',
-    status: 'active',
-    rating: 4.8,
-    reviews: 37,
-    photos: [],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    _id: 'demo-5',
-    id: 'demo-5',
-    title: 'Mobile Phone (iPhone)',
-    price: 65000,
-    location: 'Kathmandu',
-    status: 'active',
-    rating: 4.9,
-    reviews: 120,
-    photos: [],
-    createdAt: new Date().toISOString(),
-  },
-  {
-    _id: 'demo-6',
-    id: 'demo-6',
-    title: 'Hoodie',
-    price: 1200,
-    location: 'Bhaktapur',
-    status: 'active',
-    rating: 4.4,
-    reviews: 18,
-    photos: [],
-    createdAt: new Date().toISOString(),
-  },
-];
 
 const createStyles = (colors) => ({
   root: {
@@ -496,6 +421,85 @@ const createStyles = (colors) => ({
     justifyContent: 'center',
     paddingVertical: 60,
   },
+  galleryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 8,
+    gap: 4,
+  },
+  galleryItem: {
+    width: (SCREEN_WIDTH - 24) / 3,
+    height: (SCREEN_WIDTH - 24) / 3,
+    backgroundColor: colors.iconBackground,
+  },
+  galleryImage: {
+    width: '100%',
+    height: '100%',
+  },
+  imageViewerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageViewerImage: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_WIDTH * 0.8,
+    resizeMode: 'contain',
+  },
+  imageViewerClose: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageViewerCounter: {
+    position: 'absolute',
+    bottom: 40,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  imageViewerCounterText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  aboutSection: {
+    padding: 20,
+  },
+  aboutTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  aboutText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 22,
+  },
+  aboutInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    gap: 12,
+  },
+  aboutInfoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  aboutInfoText: {
+    fontSize: 13,
+    color: colors.textMuted,
+  },
 });
 
 export default function SellerProfileScreen({ navigation, route }) {
@@ -509,6 +513,9 @@ export default function SellerProfileScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('active');
   const [activeTab, setActiveTab] = useState('listings');
+  const [sellerStats, setSellerStats] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -518,19 +525,35 @@ export default function SellerProfileScreen({ navigation, route }) {
         const statusForApi = filterStatus === 'all' ? undefined : filterStatus;
         let data = null;
         let error = null;
+        
+        // Fetch seller listings
         if (sellerId) {
           const res = await api.getListings({ seller: sellerId, status: statusForApi });
           data = res.data;
           error = res.error;
+          
+          // Fetch seller reviews for stats
+          const reviewsRes = await api.getUserReviews(sellerId);
+          if (!reviewsRes.error && reviewsRes.data?.reviews) {
+            const reviews = reviewsRes.data.reviews;
+            const avgRating = reviews.length > 0 
+              ? (reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length).toFixed(1)
+              : seller?.rating || '4.8';
+            
+            setSellerStats({
+              rating: avgRating,
+              reviewsCount: reviews.length,
+              totalSold: reviews.filter(r => r.rating >= 4).length, // Approximate sold count
+            });
+          }
         } else {
           await new Promise((r) => setTimeout(r, 300));
         }
+        
         if (!active) return;
         let resultListings = [];
         if (!error && data?.listings?.length) {
           resultListings = data.listings;
-        } else if (filterStatus !== 'sold') {
-          resultListings = DEMO_LISTINGS;
         }
         resultListings.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         setListings(resultListings);
@@ -605,29 +628,29 @@ export default function SellerProfileScreen({ navigation, route }) {
                   <View style={styles.statCol}>
                     <View style={styles.statTop}>
                       <Ionicons name="star" size={15} color="#FFD700" style={styles.statIcon} />
-                      <Text style={styles.ratingText}>{seller.rating || '4.8'}</Text>
+                      <Text style={styles.ratingText}>{sellerStats?.rating || seller.rating || '4.8'}</Text>
                       <Ionicons name="star" size={12} color="#FFD700" style={styles.statIcon} />
                     </View>
-                    <Text style={styles.statReviews}>({seller.reviewsCount || 124})</Text>
+                    <Text style={styles.statReviews}>({sellerStats?.reviewsCount || seller.reviewsCount || 0})</Text>
                     <Text style={styles.statLabel}>Rating</Text>
                   </View>
 
                   <View style={styles.statCol}>
                     <View style={styles.statTop}>
-                      <Ionicons name="people-outline" size={16} color="rgba(255,255,255,0.85)" style={styles.statIcon} />
-                      <Text style={styles.statValue}>{seller.followers || '2.3K'}</Text>
+                      <Ionicons name="cube-outline" size={16} color="rgba(255,255,255,0.85)" style={styles.statIcon} />
+                      <Text style={styles.statValue}>{listings.filter(l => l.status !== 'sold').length}</Text>
                     </View>
                     <View style={{ height: 14 }} />
-                    <Text style={styles.statLabel}>Followers</Text>
+                    <Text style={styles.statLabel}>Active</Text>
                   </View>
 
                   <View style={styles.statCol}>
                     <View style={styles.statTop}>
-                      <MaterialIcons name="label-outline" size={16} color="rgba(255,255,255,0.85)" style={styles.statIcon} />
-                      <Text style={styles.statValue}>{seller.following || '56'}</Text>
+                      <MaterialIcons name="bag-check-outline" size={16} color="rgba(255,255,255,0.85)" style={styles.statIcon} />
+                      <Text style={styles.statValue}>{listings.filter(l => l.status === 'sold').length}</Text>
                     </View>
                     <View style={{ height: 14 }} />
-                    <Text style={styles.statLabel}>Following</Text>
+                    <Text style={styles.statLabel}>Sold</Text>
                   </View>
                 </View>
               </View>
@@ -649,6 +672,15 @@ export default function SellerProfileScreen({ navigation, route }) {
             />
             <Text style={[styles.tabText, activeTab === 'listings' && styles.tabTextActive]}>Listings</Text>
             {activeTab === 'listings' && <View style={styles.tabIndicator} />}
+          </Pressable>
+          <Pressable style={styles.tabItem} onPress={() => setActiveTab('gallery')}>
+            <Ionicons
+              name="images"
+              size={18}
+              color={activeTab === 'gallery' ? colors.gradientStart : colors.textSecondary}
+            />
+            <Text style={[styles.tabText, activeTab === 'gallery' && styles.tabTextActive]}>Gallery</Text>
+            {activeTab === 'gallery' && <View style={styles.tabIndicator} />}
           </Pressable>
           <Pressable style={styles.tabItem} onPress={() => setActiveTab('about')}>
             <Ionicons
@@ -751,8 +783,10 @@ export default function SellerProfileScreen({ navigation, route }) {
                       <View style={styles.listingRatingRow}>
                         <View style={styles.listingRating}>
                           <Ionicons name="star" size={12} color={colors.rating} />
-                          <Text style={styles.listingRatingText}>{listing.rating || '4.5'}</Text>
-                          <Text style={styles.listingReviews}>({listing.reviews || 32})</Text>
+                          <Text style={styles.listingRatingText}>{listing.rating || seller.rating || '—'}</Text>
+                          {listing.reviews != null ? (
+                            <Text style={styles.listingReviews}>({listing.reviews})</Text>
+                          ) : null}
                         </View>
                       </View>
 
@@ -776,14 +810,79 @@ export default function SellerProfileScreen({ navigation, route }) {
           </>
         )}
 
+        {activeTab === 'gallery' && (
+          <View style={styles.galleryGrid}>
+            {listings.flatMap(listing => listing.photos || []).map((photo, index) => (
+              <Pressable
+                key={`${listing._id}-${index}`}
+                style={styles.galleryItem}
+                onPress={() => {
+                  setSelectedImage(photo);
+                  setImageViewerVisible(true);
+                }}
+              >
+                <Image source={{ uri: photo }} style={styles.galleryImage} resizeMode="cover" />
+              </Pressable>
+            ))}
+          </View>
+        )}
+
         {activeTab === 'about' && (
-          <View style={styles.emptyState}>
-            <Ionicons name="person-circle-outline" size={48} color={colors.textMuted} style={styles.emptyIcon} />
-            <Text style={styles.emptyTitle}>About Seller</Text>
-            <Text style={styles.emptySubtitle}>Seller bio and information</Text>
+          <View style={styles.aboutSection}>
+            <Text style={styles.aboutTitle}>About {seller.name || 'This Seller'}</Text>
+            <Text style={styles.aboutText}>
+              Quality products at best price. Verified seller with excellent customer service and fast response times.
+            </Text>
+            <View style={styles.aboutInfoRow}>
+              <View style={styles.aboutInfoItem}>
+                <Ionicons name="location-outline" size={16} color={colors.textMuted} />
+                <Text style={styles.aboutInfoText}>{seller.location || 'Kathmandu'}</Text>
+              </View>
+              <View style={styles.aboutInfoItem}>
+                <Ionicons name="time-outline" size={16} color={colors.textMuted} />
+                <Text style={styles.aboutInfoText}>Member since 2024</Text>
+              </View>
+            </View>
+            <View style={styles.aboutInfoRow}>
+              <View style={styles.aboutInfoItem}>
+                <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                <Text style={styles.aboutInfoText}>Verified Seller</Text>
+              </View>
+              <View style={styles.aboutInfoItem}>
+                <Ionicons name="star" size={16} color={colors.warning} />
+                <Text style={styles.aboutInfoText}>{sellerStats?.rating || seller.rating || '4.8'} Rating</Text>
+              </View>
+            </View>
           </View>
         )}
       </ScrollView>
+
+      {/* Image Viewer Modal */}
+      <Modal
+        visible={imageViewerVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setImageViewerVisible(false)}
+      >
+        <View style={styles.imageViewerOverlay}>
+          <Pressable
+            style={styles.imageViewerClose}
+            onPress={() => setImageViewerVisible(false)}
+          >
+            <Ionicons name="close" size={24} color="#fff" />
+          </Pressable>
+          
+          {selectedImage && (
+            <Image source={{ uri: selectedImage }} style={styles.imageViewerImage} resizeMode="contain" />
+          )}
+          
+          <View style={styles.imageViewerCounter}>
+            <Text style={styles.imageViewerCounterText}>
+              Photo Viewer
+            </Text>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

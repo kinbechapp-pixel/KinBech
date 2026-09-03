@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { INFO_COPY, ROUTES } from '../navigation/helpers';
+import { api } from '../services/api';
 import { useTheme, useThemedStyles, ThemeStatusBar } from '../theme';
 
 const ACCOUNT_ROWS = [
@@ -157,9 +158,49 @@ function Row({ icon, label, subtitle, showBorder, right, onPress }) {
 export default function SettingsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { colors, isDark, setTheme, THEME_OPTIONS } = useTheme();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const styles = useThemedStyles(createStyles);
   const [notifications, setNotifications] = useState(true);
+  const [language, setLanguage] = useState('English');
+  const [currency, setCurrency] = useState('INR (₹)');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user?.preferences) {
+      setNotifications(user.preferences.notifications ?? true);
+      setLanguage(user.preferences.language || 'English');
+      setCurrency(user.preferences.currency || 'INR (₹)');
+    }
+  }, [user]);
+
+  const updatePreferences = async (updates) => {
+    setLoading(true);
+    try {
+      const { error } = await api.updatePreferences(updates);
+      if (error) {
+        console.error('Failed to update preferences:', error);
+      }
+    } catch (err) {
+      console.error('Error updating preferences:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleNotificationChange = (value) => {
+    setNotifications(value);
+    updatePreferences({ notifications: value });
+  };
+
+  const handleLanguageChange = (newLanguage) => {
+    setLanguage(newLanguage);
+    updatePreferences({ language: newLanguage });
+  };
+
+  const handleCurrencyChange = (newCurrency) => {
+    setCurrency(newCurrency);
+    updatePreferences({ currency: newCurrency });
+  };
 
   return (
     <View style={styles.root}>
@@ -202,7 +243,8 @@ export default function SettingsScreen({ navigation }) {
             right={
               <Switch
                 value={notifications}
-                onValueChange={setNotifications}
+                onValueChange={handleNotificationChange}
+                disabled={loading}
                 trackColor={{ false: colors.border, true: colors.primary }}
                 thumbColor={colors.surface}
               />
@@ -215,7 +257,7 @@ export default function SettingsScreen({ navigation }) {
             showBorder
             right={
               <View style={styles.valueRow}>
-                <Text style={styles.valueText}>English</Text>
+                <Text style={styles.valueText}>{language}</Text>
                 <Ionicons name="chevron-forward" size={18} color={colors.primary} />
               </View>
             }
@@ -241,7 +283,7 @@ export default function SettingsScreen({ navigation }) {
             subtitle="Select your preferred currency"
             right={
               <View style={styles.valueRow}>
-                <Text style={styles.valueText}>INR (₹)</Text>
+                <Text style={styles.valueText}>{currency}</Text>
                 <Ionicons name="chevron-forward" size={18} color={colors.primary} />
               </View>
             }

@@ -1,17 +1,21 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useFocusEffect } from '@react-navigation/native';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Animated, ActivityIndicator, Alert, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CategoryIcon from '../components/CategoryIcon';
 import FilterBottomSheet from '../components/FilterBottomSheet';
 import ProductCardCarousel from '../components/ProductCardCarousel';
 import SearchBar from '../components/SearchBar';
+import EmptyState from '../components/EmptyState';
+import { Skeleton, ProductCardSkeleton, CategorySkeleton, BannerSkeleton } from '../components/SkeletonLoader';
 import { navigateToTab, openItemDetail, ROUTES, TABS } from '../navigation/helpers';
 import { api } from '../services/api';
 import { attachDistanceToCard, toCardItem } from '../utils/listing';
 import { useTheme, useThemedStyles, ThemeStatusBar } from '../theme';
+import { useAuth } from '../context/AuthContext';
+import { peekCardWidth } from '../components/ProductCard';
 
 const getCategories = (colors, listings = []) => {
   const safeColors = colors || {};
@@ -40,12 +44,7 @@ const getCategories = (colors, listings = []) => {
       color: safeColors.category?.more || '#F59E0B',
     }));
 
-  let merged = [...presentFromConfig, ...extraFromListings];
-
-  if (merged.length === 0) {
-    merged = categoryConfig.slice(0, 5);
-  }
-
+  const merged = [...presentFromConfig, ...extraFromListings];
   const result = merged.slice(0, 5);
   if (merged.length > 5) {
     result.push({
@@ -62,13 +61,20 @@ export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
+  const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [listings, setListings] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [location, setLocation] = useState('Kathmandu');
   const [locating, setLocating] = useState(false);
   const [userCoords, setUserCoords] = useState({ lat: null, lng: null });
+  
+  // Animation refs
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+  const headerScaleAnim = useRef(new Animated.Value(1)).current;
+  const bannerScaleAnim = useRef(new Animated.Value(0.95)).current;
 
   const fetchCurrentLocation = useCallback(async () => {
     setLocating(true);
@@ -155,15 +161,39 @@ export default function HomeScreen({ navigation }) {
           setListings([]);
         } else {
           const raw = (data?.listings || []).map(toCardItem).filter(Boolean);
-          const withDistance = raw.map((it) => attachDistanceToCard(it, coords));
+          const withDistance = raw.map((it) => attachDistanceToCard(it, coords, user?.id));
           setListings(withDistance);
         }
         setLoading(false);
+        
+        // Trigger animations when data loads
+        if (active) {
+          Animated.parallel([
+            Animated.timing(fadeAnim, {
+              toValue: 1,
+              duration: 400,
+              useNativeDriver: true,
+            }),
+            Animated.timing(slideAnim, {
+              toValue: 0,
+              duration: 400,
+              useNativeDriver: true,
+            }),
+            Animated.timing(bannerScaleAnim, {
+              toValue: 1,
+              duration: 600,
+              useNativeDriver: true,
+            }),
+          ]).start();
+        }
       })();
       return () => {
         active = false;
+        fadeAnim.setValue(0);
+        slideAnim.setValue(20);
+        bannerScaleAnim.setValue(0.95);
       };
-    }, [userCoords.lat, userCoords.lng])
+    }, [userCoords.lat, userCoords.lng, fadeAnim, slideAnim])
   );
 
   const openItem = (item) =>
@@ -231,11 +261,29 @@ export default function HomeScreen({ navigation }) {
                 ) : null}
               </Pressable>
             </View>
-            <Pressable onPress={() => navigation.navigate(ROUTES.NOTIFICATIONS)} style={styles.bell}>
-              <Ionicons name="notifications-outline" size={22} color={colors.onGradient} />
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>3</Text>
-              </View>
+            <Pressable 
+              onPress={() => navigation.navigate(ROUTES.NOTIFICATIONS)} 
+              style={styles.bell}
+              onPressIn={() => {
+                Animated.spring(headerScaleAnim, {
+                  toValue: 0.9,
+                  useNativeDriver: true,
+                  tension: 300,
+                  friction: 10,
+                }).start();
+              }}
+              onPressOut={() => {
+                Animated.spring(headerScaleAnim, {
+                  toValue: 1,
+                  useNativeDriver: true,
+                  tension: 300,
+                  friction: 10,
+                }).start();
+              }}
+            >
+              <Animated.View style={{ transform: [{ scale: headerScaleAnim }] }}>
+                <Ionicons name="notifications-outline" size={22} color={colors.onGradient} />
+              </Animated.View>
             </Pressable>
           </View>
         </View>
@@ -252,6 +300,13 @@ export default function HomeScreen({ navigation }) {
           />
         </View>
 
+        {loading ? (
+          <View style={styles.categories}>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <CategorySkeleton key={i} />
+            ))}
+          </View>
+        ) : categories.length > 0 ? (
         <View style={styles.categories}>
           {(categories || []).map((item) => (
             <CategoryIcon
@@ -268,29 +323,25 @@ export default function HomeScreen({ navigation }) {
             />
           ))}
         </View>
-
-        {loading ? (
-          <ActivityIndicator style={{ marginTop: 24 }} color={colors.primary} />
         ) : null}
 
-        {!loading && listings.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="cube-outline" size={64} color={colors.textMuted} />
-            <Text style={styles.emptyTitle}>No items available</Text>
-            <Text style={styles.emptySubtitle}>Be the first to list an item and start selling!</Text>
-            <Pressable onPress={() => navigateToTab(navigation, TABS.POST)} style={styles.emptyButton}>
-              <LinearGradient
-                colors={colors.gradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.emptyButtonGradient}
-              >
-                <Text style={styles.emptyButtonText}>Post Your First Item</Text>
-              </LinearGradient>
-            </Pressable>
-          </View>
-        ) : (
+        {loading ? (
           <>
+            <SectionSkeleton styles={styles} />
+            <BannerSkeleton />
+            <SectionSkeleton styles={styles} />
+          </>
+        ) : listings.length === 0 ? (
+          <EmptyState
+            compact
+            icon="storefront-outline"
+            title="No items yet"
+            body="Be the first to list something. Your posts will show up here for buyers nearby."
+            buttonLabel="Post your first item"
+            onButtonPress={() => navigateToTab(navigation, TABS.POST)}
+          />
+        ) : (
+          <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
             <Section
               title="Trending Near You"
               onViewAll={() => navigation.navigate(ROUTES.SEARCH_RESULTS)}
@@ -299,16 +350,37 @@ export default function HomeScreen({ navigation }) {
               styles={styles}
             />
 
-            <View style={[styles.banner, { backgroundColor: colors.primary }]}>
+            <Animated.View 
+              style={[styles.banner, { backgroundColor: colors.primary, transform: [{ scale: bannerScaleAnim }] }]}
+            >
               <View style={styles.bannerCopy}>
                 <Text style={styles.bannerTitle}>Sell Your Items</Text>
                 <Text style={styles.bannerBody}>Turn your unused items into cash. It's quick, easy & secure!</Text>
               </View>
 
-              <Pressable onPress={() => navigateToTab(navigation, TABS.POST)} style={styles.bannerButton}>
+              <Pressable 
+                onPress={() => navigateToTab(navigation, TABS.POST)} 
+                style={styles.bannerButton}
+                onPressIn={() => {
+                  Animated.spring(bannerScaleAnim, {
+                    toValue: 0.98,
+                    useNativeDriver: true,
+                    tension: 300,
+                    friction: 10,
+                  }).start();
+                }}
+                onPressOut={() => {
+                  Animated.spring(bannerScaleAnim, {
+                    toValue: 1,
+                    useNativeDriver: true,
+                    tension: 300,
+                    friction: 10,
+                  }).start();
+                }}
+              >
                 <Text style={styles.bannerButtonText}>Start Selling</Text>
               </Pressable>
-            </View>
+            </Animated.View>
 
             <Section
               title="Recently Viewed"
@@ -317,7 +389,7 @@ export default function HomeScreen({ navigation }) {
               onPressItem={openItem}
               styles={styles}
             />
-          </>
+          </Animated.View>
         )}
       </ScrollView>
       <FilterBottomSheet
@@ -349,6 +421,25 @@ function Section({ title, onViewAll, items, onPressItem, styles }) {
         </Pressable>
       </View>
       <ProductCardCarousel items={safeItems} onPressItem={onPressItem} />
+    </View>
+  );
+}
+
+function SectionSkeleton({ styles }) {
+  const { width } = useWindowDimensions();
+  const cardWidth = peekCardWidth(width);
+  
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Skeleton width={140} height={20} borderRadius={4} />
+        <Skeleton width={50} height={14} borderRadius={4} />
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}>
+        {[1, 2, 3, 4].map((i) => (
+          <ProductCardSkeleton key={i} width={cardWidth} compact />
+        ))}
+      </ScrollView>
     </View>
   );
 }

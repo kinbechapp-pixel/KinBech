@@ -72,11 +72,13 @@ const CATEGORIES = [
 ];
 
 const FAQS = [
-  { key: 'faq1', question: 'How do I create an account?', answer: 'Tap Sign Up on the welcome screen, enter your phone number, and verify the OTP sent to you.' },
-  { key: 'faq2', question: 'How do I list an item for sale?', answer: 'Tap the + button on the home screen, add photos, details, and price, then submit your listing.' },
-  { key: 'faq3', question: 'How do I edit or delete my listing?', answer: 'Go to My Listings, select the item, and choose Edit or Delete from the options.' },
-  { key: 'faq4', question: 'What payment methods do you support?', answer: 'We support cash on delivery, mobile wallets, and bank transfers depending on your region.' },
-  { key: 'faq5', question: 'How do I report a suspicious user or item?', answer: 'Open the listing or profile, tap the menu icon, and select Report to flag it to our team.' },
+  { key: 'faq1', question: 'How do I create an account?', answer: 'Tap Sign Up on the welcome screen, enter your phone number, and verify the OTP sent to you. You can also sign up using your Google or Apple account.' },
+  { key: 'faq2', question: 'How do I list an item for sale?', answer: 'Tap the + button on the home screen, add photos of your item, fill in details like title, description, price, and location, then submit your listing. Your item will be visible to buyers in your area.' },
+  { key: 'faq3', question: 'How do I edit or delete my listing?', answer: 'Go to Profile > My Listings, select the item you want to modify, and choose Edit to update details or Delete to remove it permanently.' },
+  { key: 'faq4', question: 'What payment methods do you support?', answer: 'We support cash on delivery for local meetups, mobile wallets like eSewa/Khalti, and bank transfers. Always complete transactions within the app for safety.' },
+  { key: 'faq5', question: 'How do I report a suspicious user or item?', answer: 'Open the listing or user profile, tap the menu icon (•••), and select Report. Choose a reason and our team will review it within 24 hours.' },
+  { key: 'faq6', question: 'Is KinBech free to use?', answer: 'Yes! KinBech is completely free for buyers. Sellers can list items for free, and we only charge a small fee when items are sold.' },
+  { key: 'faq7', question: 'How do I stay safe while buying/selling?', answer: 'Always meet in public places, inspect items before payment, keep communication within the app, and never share personal information like bank details.' },
 ];
 
 const POPULAR_ARTICLES = [
@@ -110,6 +112,13 @@ export default function HelpSupportScreen({ navigation }) {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedFaq((prev) => (prev === key ? null : key));
   };
+
+  const filteredFaqs = search.trim() 
+    ? FAQS.filter(faq => 
+        faq.question.toLowerCase().includes(search.toLowerCase()) ||
+        faq.answer.toLowerCase().includes(search.toLowerCase())
+      )
+    : FAQS;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -171,33 +180,41 @@ export default function HelpSupportScreen({ navigation }) {
         </View>
 
         <View style={styles.faqCard}>
-          {(FAQS || []).map((faq, index) => {
-            const expanded = expandedFaq === faq.key;
-            return (
-              <View
-                key={faq.key}
-                style={[
-                  styles.faqItem,
-                  index === (FAQS || []).length - 1 && styles.faqItemLast,
-                ]}
-              >
-                <Pressable style={styles.faqHeader} onPress={() => toggleFaq(faq.key)}>
-                  <View style={styles.faqQBadge}>
-                    <Text style={styles.faqQBadgeText}>Q</Text>
-                  </View>
-                  <Text style={styles.faqQuestion}>{faq.question}</Text>
-                  <Ionicons
-                    name={expanded ? 'chevron-up' : 'chevron-down'}
-                    size={18}
-                    color={colors.text}
-                  />
-                </Pressable>
-                {expanded && (
-                  <Text style={styles.faqAnswer}>{faq.answer}</Text>
-                )}
-              </View>
-            );
-          })}
+          {filteredFaqs.length > 0 ? (
+            (filteredFaqs || []).map((faq, index) => {
+              const expanded = expandedFaq === faq.key;
+              return (
+                <View
+                  key={faq.key}
+                  style={[
+                    styles.faqItem,
+                    index === (filteredFaqs || []).length - 1 && styles.faqItemLast,
+                  ]}
+                >
+                  <Pressable style={styles.faqHeader} onPress={() => toggleFaq(faq.key)}>
+                    <View style={styles.faqQBadge}>
+                      <Text style={styles.faqQBadgeText}>Q</Text>
+                    </View>
+                    <Text style={styles.faqQuestion}>{faq.question}</Text>
+                    <Ionicons
+                      name={expanded ? 'chevron-up' : 'chevron-down'}
+                      size={18}
+                      color={colors.text}
+                    />
+                  </Pressable>
+                  {expanded && (
+                    <Text style={styles.faqAnswer}>{faq.answer}</Text>
+                  )}
+                </View>
+              );
+            })
+          ) : (
+            <View style={styles.noResults}>
+              <Ionicons name="search-outline" size={48} color={colors.textMuted} />
+              <Text style={styles.noResultsTitle}>No results found</Text>
+              <Text style={styles.noResultsText}>Try different keywords</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.supportCard}>
@@ -504,5 +521,21 @@ const createStyles = (colors) => ({
   articleSubtitle: {
     fontSize: 12,
     color: colors.textMuted,
+  },
+  noResults: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  noResultsTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+    marginTop: 12,
+  },
+  noResultsText: {
+    fontSize: 13,
+    color: colors.textMuted,
+    marginTop: 4,
   },
 });

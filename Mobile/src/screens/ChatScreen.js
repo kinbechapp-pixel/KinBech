@@ -154,48 +154,62 @@ export default function ChatScreen({ navigation, route }) {
         contentContainerStyle={styles.messages}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.dateSeparator}>Today</Text>
-
-        {(messages || []).map((message) => {
-          const isMe = message.sender === 'me';
-          return (
-            <View
-              key={message.id}
-              style={[styles.messageRow, isMe ? styles.messageRowMe : styles.messageRowThem]}
-            >
-              {!isMe && <Avatar size={32} colors={colors} styles={styles} />}
-
-              <View style={[styles.bubbleCol, isMe ? styles.bubbleColMe : styles.bubbleColThem]}>
-                {isMe ? (
-                  <LinearGradient
-                    colors={colors.gradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={[styles.bubble, styles.bubbleMe]}
-                  >
-                    <Text style={styles.bubbleTextMe}>{message.text}</Text>
-                  </LinearGradient>
-                ) : (
-                  <View style={[styles.bubble, styles.bubbleThem]}>
-                    <Text style={styles.bubbleTextThem}>{message.text}</Text>
-                  </View>
-                )}
-
-                <View style={[styles.metaRow, isMe ? styles.metaRowMe : styles.metaRowThem]}>
-                  <Text style={styles.metaTime}>{message.time}</Text>
-                  {isMe && (
-                    <Ionicons
-                      name="checkmark-done"
-                      size={15}
-                      color={message.read ? colors.chatRead : colors.textMuted}
-                      style={{ marginLeft: 4 }}
-                    />
-                  )}
-                </View>
-              </View>
+        {messages.length === 0 ? (
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIconWrap}>
+              <Text style={[styles.sparkle, { top: 4, left: 8 }]}>✦</Text>
+              <Text style={[styles.sparkle, { top: 20, right: 4, fontSize: 10 }]}>✦</Text>
+              <Ionicons name="chatbubble-outline" size={64} color={colors.primary} />
             </View>
-          );
-        })}
+            <Text style={styles.emptyTitle}>Start the conversation</Text>
+            <Text style={styles.emptySubtitle}>Send a message to connect with the seller</Text>
+          </View>
+        ) : (
+          <>
+            <Text style={styles.dateSeparator}>Today</Text>
+
+            {(messages || []).map((message) => {
+              const isMe = message.sender === 'me';
+              return (
+                <View
+                  key={message.id}
+                  style={[styles.messageRow, isMe ? styles.messageRowMe : styles.messageRowThem]}
+                >
+                  {!isMe && <Avatar size={32} colors={colors} styles={styles} />}
+
+                  <View style={[styles.bubbleCol, isMe ? styles.bubbleColMe : styles.bubbleColThem]}>
+                    {isMe ? (
+                      <LinearGradient
+                        colors={colors.gradient}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={[styles.bubble, styles.bubbleMe]}
+                      >
+                        <Text style={styles.bubbleTextMe}>{message.text}</Text>
+                      </LinearGradient>
+                    ) : (
+                      <View style={[styles.bubble, styles.bubbleThem]}>
+                        <Text style={styles.bubbleTextThem}>{message.text}</Text>
+                      </View>
+                    )}
+
+                    <View style={[styles.metaRow, isMe ? styles.metaRowMe : styles.metaRowThem]}>
+                      <Text style={styles.metaTime}>{message.time}</Text>
+                      {isMe && (
+                        <Ionicons
+                          name="checkmark-done"
+                          size={15}
+                          color={message.read ? colors.chatRead : colors.textMuted}
+                          style={{ marginLeft: 4 }}
+                        />
+                      )}
+                    </View>
+                  </View>
+                </View>
+              );
+            })}
+          </>
+        )}
       </ScrollView>
 
       <View style={styles.quickRepliesWrap}>
@@ -210,7 +224,11 @@ export default function ChatScreen({ navigation, route }) {
               style={styles.chip}
               onPress={() => {
                 if (reply === 'Schedule meetup') {
-                  navigation.navigate(ROUTES.MEETUP);
+                  navigation.navigate(ROUTES.MEETUP, {
+                    name: contactName,
+                    seller: { name: contactName },
+                    listing,
+                  });
                   return;
                 }
                 send(reply);
@@ -477,5 +495,34 @@ const createStyles = (colors) => ({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    padding: 32,
+    marginTop: 40,
+  },
+  emptyIconWrap: {
+    width: 100,
+    height: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sparkle: {
+    position: 'absolute',
+    fontSize: 13,
+    color: colors.primary,
+    opacity: 0.5,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.text,
+    marginTop: 12,
+  },
+  emptySubtitle: {
+    marginTop: 6,
+    fontSize: 14,
+    color: colors.textMuted,
+    textAlign: 'center',
   },
 });

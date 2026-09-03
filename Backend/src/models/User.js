@@ -15,6 +15,11 @@ const userSchema = new mongoose.Schema(
     soldCount: { type: Number, default: 0 },
     boughtCount: { type: Number, default: 0 },
     blockedUserIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    preferences: {
+      notifications: { type: Boolean, default: true },
+      language: { type: String, default: 'English' },
+      currency: { type: String, default: 'INR (₹)' },
+    },
   },
   { timestamps: true, collection: 'users' }
 );

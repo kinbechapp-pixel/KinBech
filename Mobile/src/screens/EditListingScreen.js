@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   Alert,
+  Image,
   Pressable,
   ScrollView,
   Switch,
@@ -30,13 +31,6 @@ function resolveColor(colorRef, colors) {
 
 const MAX_PHOTOS = 10;
 
-const INITIAL_PHOTOS = [
-  { id: '1', icon: 'laptop-outline', bg: 'iconBackground' },
-  { id: '2', icon: 'laptop-outline', bg: 'pastelOrange' },
-  { id: '3', icon: 'laptop-outline', bg: 'pastelBrown' },
-  { id: '4', icon: 'laptop-outline', bg: 'pastelCyan' },
-];
-
 const CATEGORIES = ['Laptops', 'Mobiles', 'Electronics', 'Furniture', 'Vehicles'];
 const CONDITIONS = ['New', 'Good', 'Fair'];
 
@@ -46,7 +40,7 @@ export default function EditListingScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const listingId = route?.params?.listingId;
   const incoming = route?.params?.listing;
-  const [photos, setPhotos] = useState(INITIAL_PHOTOS);
+  const [photos, setPhotos] = useState([]);
   const [title, setTitle] = useState(incoming?.title || '');
   const [description, setDescription] = useState(incoming?.description || '');
   const [category, setCategory] = useState(incoming?.category || 'Laptops');
@@ -54,13 +48,20 @@ export default function EditListingScreen({ navigation, route }) {
   const [price, setPrice] = useState(incoming?.price != null ? String(incoming.price) : '');
   const [markSold, setMarkSold] = useState(incoming?.status === 'sold');
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [listingNotFound, setListingNotFound] = useState(false);
 
   useEffect(() => {
     if (!listingId) return undefined;
     let active = true;
     (async () => {
-      const { data } = await api.getListing(listingId);
-      if (!active || !data?.listing) return;
+      const { data, error } = await api.getListing(listingId);
+      if (!active) return;
+      setLoading(false);
+      if (error || !data?.listing) {
+        setListingNotFound(true);
+        return;
+      }
       const listing = data.listing;
       setTitle(listing.title || '');
       setDescription(listing.description || '');
@@ -69,14 +70,14 @@ export default function EditListingScreen({ navigation, route }) {
       setPrice(listing.price != null ? String(listing.price) : '');
       setMarkSold(listing.status === 'sold');
       setPhotos(
-        (listing.photos || []).length
-          ? listing.photos.map((uri, index) => ({
-              id: String(index),
-              uri,
-              icon: 'image-outline',
-              bg: 'iconBackground',
-            }))
-          : INITIAL_PHOTOS
+        (listing.photos || [])
+          .filter(Boolean)
+          .map((uri, index) => ({
+            id: String(index),
+            uri,
+            icon: 'image-outline',
+            bg: 'iconBackground',
+          }))
       );
     })();
     return () => {
@@ -110,6 +111,41 @@ export default function EditListingScreen({ navigation, route }) {
   // Guard against undefined colors
   if (!colors) {
     return null;
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.root}>
+        <ThemeStatusBar variant="header" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </View>
+    );
+  }
+
+  if (listingNotFound) {
+    return (
+      <View style={styles.root}>
+        <ThemeStatusBar variant="header" />
+        <View style={styles.emptyState}>
+          <View style={styles.emptyIconWrap}>
+            <Text style={[styles.sparkle, { top: 4, left: 8 }]}>✦</Text>
+            <Text style={[styles.sparkle, { top: 20, right: 4, fontSize: 10 }]}>✦</Text>
+            <Ionicons name="cube-outline" size={64} color={colors.textMuted} />
+          </View>
+          <Text style={styles.emptyTitle}>Listing Not Found</Text>
+          <Text style={styles.emptySubtitle}>This listing may have been removed or is no longer available</Text>
+          <Pressable
+            style={styles.backBtn}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={20} color={colors.primary} />
+            <Text style={styles.backBtnText}>Go Back</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
   }
 
   // Resolve photo colors dynamically
@@ -167,7 +203,11 @@ export default function EditListingScreen({ navigation, route }) {
           {(resolvedPhotos || []).map((photo) => (
             <View key={photo.id} style={styles.photoBox}>
               <View style={[styles.photoThumb, { backgroundColor: photo.bg }]}>
-                <Ionicons name={photo.icon} size={30} color={colors.primary} />
+                {photo.uri ? (
+                  <Image source={{ uri: photo.uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                ) : (
+                  <Ionicons name={photo.icon} size={30} color={colors.primary} />
+                )}
               </View>
               <Pressable
                 style={styles.removeBtn}
@@ -350,6 +390,7 @@ const createStyles = (colors) => ({
   photoThumb: {
     flex: 1,
     borderRadius: 14,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -502,5 +543,56 @@ const createStyles = (colors) => ({
     fontSize: 15,
     fontWeight: '700',
     color: colors.danger,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  emptyIconWrap: {
+    width: 100,
+    height: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sparkle: {
+    position: 'absolute',
+    fontSize: 13,
+    color: colors.primary,
+    opacity: 0.5,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.text,
+    marginTop: 16,
+  },
+  emptySubtitle: {
+    marginTop: 8,
+    fontSize: 14,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: colors.link,
+  },
+  backBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.link,
   },
 });

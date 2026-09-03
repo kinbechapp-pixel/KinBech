@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -7,9 +7,11 @@ import {
   Text,
   TextInput,
   View,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ROUTES } from '../navigation/helpers';
+import { api } from '../services/api';
 import { useTheme, useThemedStyles, ThemeStatusBar } from '../theme';
 
 /**
@@ -26,13 +28,61 @@ function resolveColor(colorRef, colors) {
   return colorRef;
 }
 
-const ALL_CATEGORIES = [];
+const DEFAULT_CATEGORIES = [
+  { label: 'Mobiles', icon: 'phone-portrait-outline', colorKey: 'category.mobiles', iconSet: 'ionicons' },
+  { label: 'Laptops', icon: 'laptop-outline', colorKey: 'category.laptops', iconSet: 'ionicons' },
+  { label: 'Electronics', icon: 'headset-outline', colorKey: 'category.electronics', iconSet: 'ionicons' },
+  { label: 'Furniture', icon: 'bed-outline', colorKey: 'category.furniture', iconSet: 'ionicons' },
+  { label: 'Vehicles', icon: 'car-outline', colorKey: 'category.vehicles', iconSet: 'ionicons' },
+  { label: 'Fashion', icon: 'shirt-outline', colorKey: 'category.fashion', iconSet: 'ionicons' },
+  { label: 'Sports & Fitness', icon: 'bicycle-outline', colorKey: 'category.sports', iconSet: 'ionicons' },
+];
 
 export default function AllCategoriesScreen({ navigation }) {
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      setLoading(true);
+      const { data, error } = await api.getListings();
+      if (!active) return;
+      setLoading(false);
+      if (!error && data?.listings) {
+        // Extract unique categories from listings
+        const uniqueCategories = [...new Set(data.listings.map(l => l.category).filter(Boolean))];
+        const categoryCounts = {};
+        data.listings.forEach(listing => {
+          if (listing.category) {
+            categoryCounts[listing.category] = (categoryCounts[listing.category] || 0) + 1;
+          }
+        });
+
+        const dynamicCategories = uniqueCategories.map(category => {
+          const defaultConfig = DEFAULT_CATEGORIES.find(c => c.label === category);
+          return {
+            label: category,
+            icon: defaultConfig?.icon || 'pricetag-outline',
+            colorKey: defaultConfig?.colorKey || 'category.more',
+            iconSet: defaultConfig?.iconSet || 'ionicons',
+            count: categoryCounts[category] || 0,
+            bg: defaultConfig?.colorKey || 'category.more',
+            tint: defaultConfig?.colorKey || 'category.more'
+          };
+        });
+
+        setCategories(dynamicCategories);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Guard against undefined colors
   if (!colors) {
@@ -40,10 +90,10 @@ export default function AllCategoriesScreen({ navigation }) {
   }
 
   // Resolve category colors dynamically
-  const resolvedCategories = (ALL_CATEGORIES || []).map(category => ({
+  const resolvedCategories = (categories || []).map(category => ({
     ...category,
-    bg: resolveColor(`colors.${category.bg}`, colors),
-    tint: resolveColor(`colors.${category.tint}`, colors)
+    bg: resolveColor(`colors.${category.colorKey}`, colors),
+    tint: resolveColor(`colors.${category.colorKey}`, colors)
   }));
 
   const filtered = resolvedCategories.filter((item) =>
@@ -78,7 +128,11 @@ export default function AllCategoriesScreen({ navigation }) {
           />
         </View>
 
-        {filtered.length > 0 ? (
+        {loading ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : filtered.length > 0 ? (
           <View style={styles.grid}>
             {(filtered || []).map((item) => (
               <Pressable
@@ -96,7 +150,7 @@ export default function AllCategoriesScreen({ navigation }) {
                 <Text style={styles.cardLabel} numberOfLines={1}>
                   {item.label}
                 </Text>
-                <Text style={styles.cardCount}>{item.count} items</Text>
+                <Text style={styles.cardCount}>{item.count || 0} items</Text>
               </Pressable>
             ))}
           </View>
@@ -210,5 +264,9 @@ const createStyles = (colors) => ({
     color: colors.textMuted,
     textAlign: 'center',
     marginTop: 4,
+  },
+  loadingState: {
+    alignItems: 'center',
+    paddingVertical: 60,
   },
 });

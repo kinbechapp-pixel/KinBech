@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "KinBech",
+    "slug": "kinbech",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icons/app_logo.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/icons/app_logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#050512"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icons/app_logo.png",
+        "backgroundColor": "#5B39C6"
+      },
+      "edgeToEdgeEnabled": true,
+      "usesCleartextTraffic": true,
+      "softwareKeyboardLayoutMode": "adjustResize",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "package": "com.codersalpha1.kinbech"
+    },
+    "web": {
+      "favicon": "./assets/icons/app_logo.png"
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "KinBech needs photo access so you can upload listing images.",
+          "cameraPermission": "KinBech needs camera access so you can take listing photos."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow KinBech to use your location to auto-fill listing city and district."
+        }
+      ]
+    ]
+  }
+}

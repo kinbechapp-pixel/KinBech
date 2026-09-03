@@ -1,0 +1,287 @@
+import { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../context/AuthContext';
+import { INFO_COPY, ROUTES } from '../navigation/helpers';
+import { useTheme, useThemedStyles, ThemeStatusBar } from '../theme';
+
+const ACCOUNT_ROWS = [
+  { label: 'Edit Profile', subtitle: 'Update your personal information', icon: 'person-outline', screen: ROUTES.INFO, params: INFO_COPY.EditProfile },
+  { label: 'Privacy & Security', subtitle: 'Manage your privacy settings', icon: 'lock-open-outline', screen: ROUTES.INFO, params: INFO_COPY.Privacy },
+  { label: 'Saved Addresses', subtitle: 'Manage your saved locations', icon: 'location-outline', screen: ROUTES.INFO, params: INFO_COPY.Addresses },
+  { label: 'Payment Methods', subtitle: 'Manage your payment options', icon: 'card-outline', screen: ROUTES.INFO, params: INFO_COPY.PaymentMethods },
+  { label: 'My Listings', subtitle: 'View and manage your posted items', icon: 'list-outline', screen: ROUTES.MY_LISTINGS },
+];
+
+const SUPPORT_ROWS = [
+  { label: 'Help Center', subtitle: 'Find answers to common questions', icon: 'help-circle-outline', screen: ROUTES.HELP },
+  { label: 'Contact Us', subtitle: 'Get in touch with our support team', icon: 'chatbubble-ellipses-outline', screen: ROUTES.INFO, params: INFO_COPY.ContactUs },
+  { label: 'Terms & Conditions', subtitle: 'Read our terms and conditions', icon: 'shield-checkmark-outline', screen: ROUTES.INFO, params: INFO_COPY.Terms },
+  { label: 'Privacy Policy', subtitle: 'Learn how we protect your data', icon: 'document-text-outline', screen: ROUTES.INFO, params: INFO_COPY.PrivacyPolicy },
+];
+
+const createStyles = (colors) => ({
+  root: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingBottom: 20,
+  },
+  back: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: colors.onGradient,
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textMuted,
+    marginBottom: 10,
+    marginTop: 8,
+  },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 24,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    gap: 12,
+  },
+  rowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.iconBackground,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowText: {
+    flex: 1,
+  },
+  rowLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  rowSubtitle: {
+    marginTop: 2,
+    fontSize: 12,
+    color: colors.textMuted,
+  },
+  valueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  valueText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  logoutCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 14,
+    gap: 12,
+  },
+  logoutIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.dangerBackground,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoutLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.danger,
+  },
+  versionText: {
+    marginTop: 20,
+    textAlign: 'center',
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+});
+
+function Row({ icon, label, subtitle, showBorder, right, onPress }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
+
+  return (
+    <Pressable style={[styles.row, showBorder && styles.rowBorder]} onPress={onPress}>
+      <View style={styles.iconCircle}>
+        <Ionicons name={icon} size={20} color={colors.primary} />
+      </View>
+      <View style={styles.rowText}>
+        <Text style={styles.rowLabel}>{label}</Text>
+        <Text style={styles.rowSubtitle}>{subtitle}</Text>
+      </View>
+      {right ?? <Ionicons name="chevron-forward" size={20} color={colors.primary} />}
+    </Pressable>
+  );
+}
+
+export default function SettingsScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
+  const { colors, isDark, setTheme, THEME_OPTIONS } = useTheme();
+  const { logout } = useAuth();
+  const styles = useThemedStyles(createStyles);
+  const [notifications, setNotifications] = useState(true);
+
+  return (
+    <View style={styles.root}>
+      <ThemeStatusBar variant="header" />
+      <LinearGradient
+        colors={colors.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={[styles.header, { paddingTop: insets.top + 8 }]}
+      >
+        <Pressable onPress={() => navigation.goBack()} hitSlop={12} style={styles.back}>
+          <Ionicons name="chevron-back" size={26} color={colors.onGradient} />
+        </Pressable>
+        <Text style={styles.headerTitle}>Settings</Text>
+        <View style={styles.back} />
+      </LinearGradient>
+
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Text style={styles.sectionTitle}>Account</Text>
+        <View style={styles.card}>
+          {(ACCOUNT_ROWS || []).map((item, index) => (
+            <Row
+              key={item.label}
+              icon={item.icon}
+              label={item.label}
+              subtitle={item.subtitle}
+              showBorder={index < ACCOUNT_ROWS.length - 1}
+              onPress={() => navigation.navigate(item.screen, item.params)}
+            />
+          ))}
+        </View>
+
+        <Text style={styles.sectionTitle}>Preferences</Text>
+        <View style={styles.card}>
+          <Row
+            icon="notifications-outline"
+            label="Notifications"
+            subtitle="Manage your notification preferences"
+            showBorder
+            right={
+              <Switch
+                value={notifications}
+                onValueChange={setNotifications}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor={colors.surface}
+              />
+            }
+          />
+          <Row
+            icon="globe-outline"
+            label="Language"
+            subtitle="Choose your preferred language"
+            showBorder
+            right={
+              <View style={styles.valueRow}>
+                <Text style={styles.valueText}>English</Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+              </View>
+            }
+            onPress={() => navigation.navigate(ROUTES.INFO, INFO_COPY.LanguageSelect)}
+          />
+          <Row
+            icon="moon-outline"
+            label="Dark Mode"
+            subtitle="Switch between light and dark theme"
+            showBorder
+            right={
+              <Switch
+                value={isDark}
+                onValueChange={(value) => setTheme(value ? THEME_OPTIONS.DARK : THEME_OPTIONS.LIGHT)}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor={colors.surface}
+              />
+            }
+          />
+          <Row
+            icon="cash-outline"
+            label="Currency"
+            subtitle="Select your preferred currency"
+            right={
+              <View style={styles.valueRow}>
+                <Text style={styles.valueText}>INR (₹)</Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+              </View>
+            }
+            onPress={() => navigation.navigate(ROUTES.INFO, INFO_COPY.CurrencySelect)}
+          />
+        </View>
+
+        <Text style={styles.sectionTitle}>Support</Text>
+        <View style={styles.card}>
+          {(SUPPORT_ROWS || []).map((item, index) => (
+            <Row
+              key={item.label}
+              icon={item.icon}
+              label={item.label}
+              subtitle={item.subtitle}
+              showBorder={index < SUPPORT_ROWS.length - 1}
+              onPress={() => navigation.navigate(item.screen, item.params)}
+            />
+          ))}
+        </View>
+
+        <Pressable
+          style={styles.logoutCard}
+          onPress={async () => {
+            await logout();
+            navigation.reset({ index: 0, routes: [{ name: ROUTES.LOGIN }] });
+          }}
+        >
+          <View style={styles.logoutIconCircle}>
+            <Ionicons name="log-out-outline" size={20} color={colors.danger} />
+          </View>
+          <View style={styles.rowText}>
+            <Text style={styles.logoutLabel}>Log Out</Text>
+            <Text style={styles.rowSubtitle}>Sign out from your account</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.danger} />
+        </Pressable>
+
+        <Text style={styles.versionText}>Version 1.0.0</Text>
+      </ScrollView>
+    </View>
+  );
+}

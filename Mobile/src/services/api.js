@@ -1,0 +1,318 @@
+import { getApiBaseUrlCandidates } from '../config/apiUrl';
+
+let authToken = null;
+let workingBaseUrl = null;
+
+export function setAuthToken(token) {
+  authToken = token || null;
+}
+
+export function getAuthToken() {
+  return authToken;
+}
+
+export function resetCachedBaseUrl() {
+  workingBaseUrl = null;
+}
+
+function toQuery(params = {}) {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '' || value === 'All') {
+      return;
+    }
+    search.set(key, String(value));
+  });
+  const qs = search.toString();
+  return qs ? `?${qs}` : '';
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isNetworkError(errorMessage) {
+  if (!errorMessage) return false;
+  const m = String(errorMessage).toLowerCase();
+  return (
+    m.includes('network request failed') ||
+    m.includes('network error') ||
+    m.includes('load failed') ||
+    m.includes('timeout') ||
+    m.includes('connection reset') ||
+    m.includes('enotfound') ||
+    m.includes('econnrefused') ||
+    m.includes('etimedout') ||
+    m.includes('eai_again') ||
+    m.includes('abort') ||
+    m.includes('socket hang up') ||
+    m.includes('failed to fetch')
+  );
+}
+
+function isTransientHttpStatus(status) {
+  if (!status) return false;
+  return status === 408 || status === 425 || status === 429 || (status >= 500 && status < 600);
+}
+
+function safeUrl(baseUrl, path) {
+  const u = String(baseUrl || '').trim();
+  const p = String(path || '').trim();
+  const cleanBase = u.replace(/\/+$/, '');
+  const cleanPath = p.startsWith('/') ? p : `/${p}`;
+  return `${cleanBase}${cleanPath}`;
+}
+
+async function requestWithTimeout(url, options, timeoutMs) {
+  const controller =
+    typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const signal = controller ? controller.signal : undefined;
+  let timeoutId = null;
+  let timedOut = false;
+
+  if (controller && timeoutMs > 0) {
+    timeoutId = setTimeout(() => {
+      timedOut = true;
+      try {
+        controller.abort();
+      } catch {
+        /* noop */
+      }
+    }, timeoutMs);
+  }
+
+  try {
+    const response = await fetch(url, { ...options, signal });
+    return { response, timedOut: false };
+  } catch (err) {
+    throw new Error(timedOut ? 'Request timeout' : (err?.message || 'Network request failed'));
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+async function tryUrlOnce({ baseUrl, path, options, extraHeaders, timeoutMs }) {
+  const url = safeUrl(baseUrl, path);
+  const { response } = await requestWithTimeout(
+    url,
+    {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        ...(extraHeaders || {}),
+      },
+    },
+    timeoutMs
+  );
+  console.log('API Response Status:', response.status, 'via', baseUrl);
+
+  let data = null;
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
+
+  if (!response.ok) {
+    const errorMsg = data?.message || 'Request failed';
+    return {
+      ok: false,
+      isNetwork: false,
+      status: response.status,
+      data,
+      error: errorMsg,
+      baseUrl,
+    };
+  }
+
+  return {
+    ok: true,
+    isNetwork: false,
+    status: response.status,
+    data,
+    error: null,
+    baseUrl,
+  };
+}
+
+const PRIMARY_CANDIDATE_MARKERS = ['10.0.2.2', '127.0.0.1', 'localhost'];
+
+function isPrimaryCandidate(baseUrl) {
+  return PRIMARY_CANDIDATE_MARKERS.some((m) => baseUrl.includes(m));
+}
+
+function buildCandidates() {
+  const candidates = [];
+  if (workingBaseUrl) candidates.push(workingBaseUrl);
+  try {
+    const detected = getApiBaseUrlCandidates();
+    for (const c of detected) {
+      if (!candidates.includes(c)) candidates.push(c);
+    }
+  } catch {
+    const primary = process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:5001';
+    if (!candidates.includes(primary)) candidates.push(primary);
+    if (!candidates.includes('http://10.0.2.2:5001')) candidates.push('http://10.0.2.2:5001');
+    if (!candidates.includes('http://localhost:5001')) candidates.push('http://localhost:5001');
+  }
+  return candidates;
+}
+
+async function request(path, options = {}) {
+  const { headers: extraHeaders, ...rest } = options;
+  const initialTimeoutMs = 10000;
+
+  let lastData = null;
+  let lastNonNetworkError = null;
+
+  for (let pass = 0; pass < 2; pass++) {
+    const candidates = buildCandidates();
+    if (pass === 0) {
+      console.log('API Request start:', path, ' candidates:', candidates);
+    } else {
+      console.log('API retry pass:', pass + 1, '- refreshing candidates');
+      if (workingBaseUrl) resetCachedBaseUrl();
+    }
+
+    for (let cIdx = 0; cIdx < candidates.length; cIdx++) {
+      const baseUrl = candidates[cIdx];
+      const isPrimary = isPrimaryCandidate(baseUrl);
+      const attemptsPerUrl = isPrimary ? 2 : 1;
+      const baseTimeout = isPrimary ? initialTimeoutMs : 5000;
+
+      for (let attempt = 0; attempt < attemptsPerUrl; attempt++) {
+        const timeoutMs = baseTimeout + attempt * 5000 + (pass * 2000);
+        const label =
+          pass === 0 && cIdx === 0 && attempt === 0
+            ? 'Request'
+            : `[P${pass + 1}] Retry(${baseUrl}) a${attempt + 1}`;
+
+        try {
+          console.log(`[${label}] POST/GET ${baseUrl}${path}`);
+          const result = await tryUrlOnce({
+            baseUrl,
+            path,
+            options: rest,
+            extraHeaders,
+            timeoutMs,
+          });
+
+          if (result.ok) {
+            if (workingBaseUrl !== baseUrl) {
+              workingBaseUrl = baseUrl;
+              console.log('Cached working API base URL:', baseUrl);
+            }
+            console.log('API Success:', result.data);
+            return { data: result.data, error: null };
+          }
+
+          lastData = result.data;
+
+          if (isTransientHttpStatus(result.status) && attempt < attemptsPerUrl - 1) {
+            const backoff = 400 * Math.pow(2, attempt) + Math.random() * 200;
+            console.log(`Status ${result.status}; retrying same URL after ${Math.round(backoff)}ms`);
+            await sleep(backoff);
+            continue;
+          }
+
+          lastNonNetworkError = result.error;
+          const isLastOfAll =
+            pass === 1 && cIdx === candidates.length - 1 && attempt === attemptsPerUrl - 1;
+          if (isLastOfAll) {
+            return { data: result.data, error: result.error };
+          }
+          break;
+        } catch (rawErr) {
+          const msg = rawErr?.message || 'Network request failed';
+          console.log(`[${label}] failed:`, msg);
+
+          const isNetErr = isNetworkError(msg);
+
+          if (isNetErr) {
+            if (workingBaseUrl === baseUrl) workingBaseUrl = null;
+            if (cIdx < candidates.length - 1) {
+              console.log(`Switching to next candidate URL: ${candidates[cIdx + 1]}`);
+              break;
+            }
+            if (attempt < attemptsPerUrl - 1) {
+              const backoff = 600 * Math.pow(2, attempt) + Math.random() * 400;
+              console.log(`Network error; retrying same URL after ${Math.round(backoff)}ms`);
+              await sleep(backoff);
+              continue;
+            }
+            if (pass === 0) {
+              console.log('All candidates failed in first pass; will refresh candidates and retry');
+              break;
+            }
+            return {
+              data: lastData,
+              error:
+                'Cannot reach the server. Please check your network connection or try again in a moment.',
+            };
+          }
+
+          lastNonNetworkError = msg;
+          const isLastOfAllNonNet =
+            pass === 1 && cIdx === candidates.length - 1 && attempt === attemptsPerUrl - 1;
+          if (isLastOfAllNonNet) {
+            return { data: lastData, error: msg };
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  return {
+    data: lastData,
+    error: lastNonNetworkError || 'Request failed after multiple attempts. Please try again shortly.',
+  };
+}
+
+export const api = {
+  login: (payload) =>
+    request('/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
+  signup: (payload) =>
+    request('/auth/signup', { method: 'POST', body: JSON.stringify(payload) }),
+  verifyOtp: (payload) =>
+    request('/auth/otp', { method: 'POST', body: JSON.stringify(payload) }),
+  completeSignup: (payload) =>
+    request('/auth/complete-signup', { method: 'POST', body: JSON.stringify(payload) }),
+  me: () => request('/auth/me'),
+  updateMe: (payload) =>
+    request('/auth/me', { method: 'PATCH', body: JSON.stringify(payload) }),
+  updateProfile: (payload) =>
+    request('/auth/me', { method: 'PATCH', body: JSON.stringify({ ...payload, profileComplete: true }) }),
+  getListings: (params = {}) => request(`/listings${toQuery(params)}`),
+  searchListings: (params = {}) => request(`/listings/search${toQuery(params)}`),
+  getMyListings: () => request('/listings/mine'),
+  getListing: (id, loc) => {
+    const params = {};
+    if (loc?.lat != null) params.lat = loc.lat;
+    if (loc?.lng != null) params.lng = loc.lng;
+    return request(`/listings/${id}${toQuery(params)}`);
+  },
+  createListing: (payload) =>
+    request('/listings', { method: 'POST', body: JSON.stringify(payload) }),
+  updateListing: (id, payload) =>
+    request(`/listings/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteListing: (id) => request(`/listings/${id}`, { method: 'DELETE' }),
+  getChats: () => request('/chats'),
+  createChat: (payload) =>
+    request('/chats', { method: 'POST', body: JSON.stringify(payload) }),
+  getMessages: (chatId) => request(`/chats/${chatId}/messages`),
+  sendMessage: (chatId, text) =>
+    request(`/chats/${chatId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    }),
+  getWishlist: () => request('/wishlist'),
+  toggleWishlist: (listingId) =>
+    request('/wishlist', {
+      method: 'POST',
+      body: JSON.stringify({ listingId }),
+    }),
+};
+
+export default api;

@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { INFO_COPY, ROUTES } from '../navigation/helpers';
 import { api } from '../services/api';
+import EmptyState from '../components/EmptyState';
 import { categoryIcon, toDetailItem } from '../utils/listing';
 import { useTheme, useThemedStyles, ThemeStatusBar } from '../theme';
 import { useSharedTransition, BEZIER_EASE_OUT } from '../context/SharedTransitionContext';
@@ -48,7 +49,7 @@ export default function ItemDetailScreen({ navigation, route }) {
 
   const entryProgress = useSharedValue(0);
   useEffect(() => {
-    entryProgress.value = withTiming(1, { duration: baseDuration + 100, easing: easeOut });
+    entryProgress.value = withTiming(1, { duration: baseDuration, easing: easeOut });
   }, [entryProgress, baseDuration, easeOut]);
 
   useEffect(() => {
@@ -73,22 +74,14 @@ export default function ItemDetailScreen({ navigation, route }) {
     return (
       <View style={styles.root}>
         <ThemeStatusBar variant="header" />
-        <View style={styles.emptyState}>
-          <View style={styles.emptyIconWrap}>
-            <Text style={[styles.sparkle, { top: 4, left: 8 }]}>✦</Text>
-            <Text style={[styles.sparkle, { top: 20, right: 4, fontSize: 10 }]}>✦</Text>
-            <Ionicons name="cube-outline" size={64} color={colors.textMuted} />
-          </View>
-          <Text style={styles.emptyTitle}>Item Not Found</Text>
-          <Text style={styles.emptySubtitle}>This item may have been removed or is no longer available</Text>
-          <Pressable
-            style={styles.backBtn}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={20} color={colors.primary} />
-            <Text style={styles.backBtnText}>Go Back</Text>
-          </Pressable>
-        </View>
+        <EmptyState
+          compact
+          icon="cube-outline"
+          title="Item not found"
+          body="This item may have been removed or is no longer available."
+          buttonLabel="Go back"
+          onButtonPress={() => navigation.goBack()}
+        />
       </View>
     );
   }
@@ -153,37 +146,29 @@ export default function ItemDetailScreen({ navigation, route }) {
             ))}
           </ScrollView>
 
-          <Animated.View
-            entering={reduceMotion ? FadeIn.duration(baseDuration) : FadeInDown.duration(baseDuration * 0.6).delay(baseDuration * 0.25).easing(easeOut)}
+          <Pressable
+            style={[styles.roundBtn, { top: insets.top + 8, left: 16 }]}
+            onPress={() => navigation.goBack()}
+            hitSlop={10}
           >
-            <Pressable
-              style={[styles.roundBtn, { top: insets.top + 8, left: 16 }]}
-              onPress={() => navigation.goBack()}
-              hitSlop={10}
-            >
-              <Ionicons name="chevron-back" size={24} color={colors.text} />
-            </Pressable>
-          </Animated.View>
+            <Ionicons name="chevron-back" size={24} color={colors.text} />
+          </Pressable>
 
-          <Animated.View
-            entering={reduceMotion ? FadeIn.duration(baseDuration) : FadeInDown.duration(baseDuration * 0.6).delay(baseDuration * 0.3).easing(easeOut)}
+          <Pressable
+            style={[styles.roundBtn, { top: insets.top + 8, right: 16 }]}
+            onPress={async () => {
+              if (!listingId) return;
+              const { error } = await api.toggleWishlist(listingId);
+              if (!error) setFavorited((v) => !v);
+            }}
+            hitSlop={10}
           >
-            <Pressable
-              style={[styles.roundBtn, { top: insets.top + 8, right: 16 }]}
-              onPress={async () => {
-                if (!listingId) return;
-                const { error } = await api.toggleWishlist(listingId);
-                if (!error) setFavorited((v) => !v);
-              }}
-              hitSlop={10}
-            >
-              <Ionicons
-                name={favorited ? 'heart' : 'heart-outline'}
-                size={22}
-                color={colors.danger}
-              />
-            </Pressable>
-          </Animated.View>
+            <Ionicons
+              name={favorited ? 'heart' : 'heart-outline'}
+              size={22}
+              color={colors.danger}
+            />
+          </Pressable>
 
           <Animated.View
             style={styles.dotsRow}
@@ -262,29 +247,93 @@ export default function ItemDetailScreen({ navigation, route }) {
                     .easing(easeOut)
             }
           >
-            <Pressable
-              style={styles.sellerCard}
-              onPress={() => navigation.navigate(ROUTES.SELLER_PROFILE, { seller: item.sellerData })}
-            >
-              <View style={styles.sellerAvatar}>
-                {item.sellerData?.avatarUrl ? (
-                  <Image source={{ uri: item.sellerData.avatarUrl }} style={styles.sellerAvatarImage} />
-                ) : (
-                  <Ionicons name="person" size={26} color={colors.onGradient} />
-                )}
-              </View>
-              <View style={styles.sellerInfo}>
-                <Text style={styles.sellerName}>{item.seller}</Text>
-                <View style={styles.sellerRatingRow}>
-                  <Ionicons name="star" size={14} color={colors.rating} />
-                  <Text style={styles.sellerRating}>{item.rating}</Text>
+            {/* Individual Seller Card */}
+            {listing.sellerType === 'individual' && (
+              <Pressable
+                style={styles.sellerCard}
+                onPress={() => navigation.navigate(ROUTES.SELLER_PROFILE, { seller: item.sellerData })}
+              >
+                <View style={styles.sellerAvatar}>
+                  {item.sellerData?.avatarUrl ? (
+                    <Image source={{ uri: item.sellerData.avatarUrl }} style={styles.sellerAvatarImage} />
+                  ) : (
+                    <Ionicons name="person" size={26} color={colors.onGradient} />
+                  )}
                 </View>
-              </View>
-              <View style={styles.viewProfileRow}>
-                <Text style={styles.viewProfile}>View Profile</Text>
-                <Ionicons name="chevron-forward" size={16} color={colors.link} />
-              </View>
-            </Pressable>
+                <View style={styles.sellerInfo}>
+                  <Text style={styles.sellerName}>{item.seller}</Text>
+                  <View style={styles.sellerMetaRow}>
+                    <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+                    <Text style={styles.sellerMetaText}>Verified Seller</Text>
+                  </View>
+                </View>
+                <View style={styles.viewProfileRow}>
+                  <Text style={styles.viewProfile}>View Profile</Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.link} />
+                </View>
+              </Pressable>
+            )}
+
+            {/* Shop Seller Card */}
+            {listing.sellerType === 'shop' && listing.shopId && (
+              <Pressable
+                style={styles.sellerCard}
+                onPress={() => navigation.navigate(ROUTES.SHOP_PROFILE, { shopId: listing.shopId._id })}
+              >
+                <View style={styles.sellerAvatar}>
+                  {listing.shopId?.logo ? (
+                    <Image source={{ uri: listing.shopId.logo }} style={styles.sellerAvatarImage} />
+                  ) : (
+                    <Ionicons name="storefront" size={26} color={colors.onGradient} />
+                  )}
+                </View>
+                <View style={styles.sellerInfo}>
+                  <Text style={styles.sellerName}>{listing.shopId?.name || 'Shop'}</Text>
+                  <View style={styles.sellerRatingRow}>
+                    <Ionicons name="star" size={14} color={colors.rating} />
+                    <Text style={styles.sellerRating}>{listing.shopId?.ratingAverage?.toFixed(1) || '0.0'}</Text>
+                    <Text style={styles.sellerReviewCount}>({listing.shopId?.reviewCount || 0})</Text>
+                  </View>
+                  {listing.shopId?.isVerified && (
+                    <View style={styles.sellerMetaRow}>
+                      <Ionicons name="checkmark-circle" size={12} color={colors.success} />
+                      <Text style={styles.sellerMetaText}>Verified Shop</Text>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.viewProfileRow}>
+                  <Text style={styles.viewProfile}>View Shop</Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.link} />
+                </View>
+              </Pressable>
+            )}
+
+            {/* Fallback for old listings without sellerType */}
+            {!listing.sellerType && (
+              <Pressable
+                style={styles.sellerCard}
+                onPress={() => navigation.navigate(ROUTES.SELLER_PROFILE, { seller: item.sellerData })}
+              >
+                <View style={styles.sellerAvatar}>
+                  {item.sellerData?.avatarUrl ? (
+                    <Image source={{ uri: item.sellerData.avatarUrl }} style={styles.sellerAvatarImage} />
+                  ) : (
+                    <Ionicons name="person" size={26} color={colors.onGradient} />
+                  )}
+                </View>
+                <View style={styles.sellerInfo}>
+                  <Text style={styles.sellerName}>{item.seller}</Text>
+                  <View style={styles.sellerMetaRow}>
+                    <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+                    <Text style={styles.sellerMetaText}>Verified Seller</Text>
+                  </View>
+                </View>
+                <View style={styles.viewProfileRow}>
+                  <Text style={styles.viewProfile}>View Profile</Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.link} />
+                </View>
+              </Pressable>
+            )}
           </Animated.View>
 
           <Animated.View

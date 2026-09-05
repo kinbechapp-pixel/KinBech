@@ -11,14 +11,18 @@ const userSchema = new mongoose.Schema(
       longitude: { type: Number },
     },
     profileComplete: { type: Boolean, default: false },
-    rating: { type: Number, default: 0 },
     soldCount: { type: Number, default: 0 },
     boughtCount: { type: Number, default: 0 },
     blockedUserIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    sellerTypePreference: { 
+      type: String, 
+      enum: ['individual', 'shop', 'both'], 
+      default: 'individual' 
+    },
     preferences: {
       notifications: { type: Boolean, default: true },
       language: { type: String, default: 'English' },
-      currency: { type: String, default: 'INR (₹)' },
+      currency: { type: String, default: 'NPR (₨)' },
     },
   },
   { timestamps: true, collection: 'users' }

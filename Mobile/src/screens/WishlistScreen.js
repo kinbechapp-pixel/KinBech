@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSharedTransition } from '../context/SharedTransitionContext';
+import EmptyState from '../components/EmptyState';
 import { navigateToTab, openItemDetail, TABS } from '../navigation/helpers';
 import { api } from '../services/api';
 import { categoryIcon, formatPrice } from '../utils/listing';
@@ -149,48 +150,15 @@ export default function WishlistScreen({ navigation }) {
         )}
 
         {items.length === 0 ? (
-          <View style={styles.emptyCardFull}>
-            <View style={styles.emptyHeartWrap}>
-              <Text style={[styles.sparkle, { top: 4, left: 8 }]}>✦</Text>
-              <Text style={[styles.sparkle, { top: 20, right: 4, fontSize: 10 }]}>✦</Text>
-              <Ionicons name="heart-outline" size={64} color={colors.primary} />
-            </View>
-            <Text style={styles.emptyTitle}>No saved items yet</Text>
-            <Text style={styles.emptySubtitle}>Items you save will appear here</Text>
-            <Pressable onPress={() => navigateToTab(navigation, TABS.HOME)}>
-              <LinearGradient
-                colors={colors.gradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.exploreBtn}
-              >
-                <Text style={styles.exploreText}>Explore Items</Text>
-              </LinearGradient>
-            </Pressable>
-          </View>
-        ) : (
-          <View style={styles.emptyCard}>
-            <View style={styles.emptyHeartWrap}>
-              <Text style={[styles.sparkle, { top: 4, left: 8 }]}>✦</Text>
-              <Text style={[styles.sparkle, { top: 20, right: 4, fontSize: 10 }]}>✦</Text>
-              <Ionicons name="heart-outline" size={56} color={colors.primary} />
-            </View>
-            <View style={styles.emptyTextCol}>
-              <Text style={styles.emptyTitle}>No saved items yet</Text>
-              <Text style={styles.emptySubtitle}>Items you save will appear here</Text>
-              <Pressable onPress={() => navigateToTab(navigation, TABS.HOME)}>
-                <LinearGradient
-                  colors={colors.gradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.exploreBtn}
-                >
-                  <Text style={styles.exploreText}>Explore Items</Text>
-                </LinearGradient>
-              </Pressable>
-            </View>
-          </View>
-        )}
+          <EmptyState
+            compact
+            icon="heart-outline"
+            title="No saved items yet"
+            body="Tap the heart on a listing to keep it here."
+            buttonLabel="Explore items"
+            onButtonPress={() => navigateToTab(navigation, TABS.HOME)}
+          />
+        ) : null}
       </ScrollView>
     </View>
   );

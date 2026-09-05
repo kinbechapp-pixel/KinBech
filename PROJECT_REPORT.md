@@ -37,23 +37,43 @@ KinBech इन सभी problems को solve करता है by focusing o
 - **Report system** for suspicious users/listings
 
 ### 🛍️ Core Marketplace Features
+- **Dual Seller System:** Choose between Individual Seller or Shop Seller
+- **Individual Seller Mode:** Quick posting for personal items, simple interface
+- **Shop Seller Mode:** Business profiles with inventory management, bulk listings
 - **Item Listing:** Upload photos, add details, set price, location
 - **Advanced Search:** Filter by category, condition, price range, distance
 - **Location-based Discovery:** See items near you using GPS
 - **Real-time Chat:** In-app messaging between buyers and sellers
 - **Wishlist:** Save favorite items for later
 - **Seller Profiles:** View seller ratings, reviews, and listings
+- **Shop Profiles:** Business profiles with verification, ratings, and product catalogs
 
 ### 💳 Transaction Features
 - **Multiple Payment Options:** Cash on delivery, mobile wallets, bank transfers
 - **Safe Meetup Coordination:** Suggest public meeting places
-- **Review & Rating System:** Rate sellers after successful transactions
+- **Review & Rating System:** Rate sellers and shops after successful transactions
 - **Transaction History:** Track purchases and sales
+
+### 🏪 Shop System (New Feature)
+- **Shop Creation:** Complete business profile setup with name, category, description, logo
+- **Shop Categories:** Mobiles, Laptops, Electronics, Furniture, Vehicles, Clothing, Grocery, Other
+- **Shop Verification:** Verification badges for trusted businesses
+- **Inventory Management:** Stock tracking, SKU codes, brand information
+- **Shop-specific Listings:** Bulk product posting with business-specific fields
+- **Shop Profiles:** Public business pages with ratings, reviews, and product catalogs
+- **Shop Analytics:** Customer reviews, ratings, and follower counts
+- **Location & Hours:** Business location, address, and opening hours
 
 ### 📱 User Experience
 - **Beautiful UI/UX:** Modern gradient-based design with smooth animations
 - **Shared Element Transitions:** Smooth navigation between screens
 - **Dark Mode Support:** Theme customization
+- **Seller Type Selection:** Choose between Individual and Shop seller modes
+- **Multi-language Support:** English, Nepali, and Hindi language options
+- **Currency Selection:** Multiple currency options
+- **Shop Profile Management:** Complete business profile setup and management
+- **Inventory Management:** Stock tracking, SKU management, and product variants
+- **Settings Screen:** Comprehensive user preferences and account management
 - **Offline Support:** Basic functionality without internet
 - **Push Notifications:** Real-time updates for chats and offers
 
@@ -106,15 +126,18 @@ KinBech इन सभी problems को solve करता है by focusing o
 │ - Navigation  │         │ - Models      │         │ - Reviews     │
 └──────────────┘         └──────────────┘         │ - Reports     │
                                                      │ - Wishlist    │
+                                                     │ - Shops       │
                                                      └──────────────┘
 ```
 
 ### Data Flow
 1. **User Authentication:** Phone → OTP → JWT Token → API Access
-2. **Listing Creation:** User uploads data → API validates → MongoDB store
-3. **Search & Discovery:** User filters → API queries MongoDB → Returns results
-4. **Communication:** Real-time chat → API stores messages → Push notifications
-5. **Reviews & Reports:** User submits → API validates → Updates seller ratings
+2. **Seller Type Selection:** User chooses Individual/Shop → Updates user preferences
+3. **Shop Creation:** Business info → API validates → MongoDB store → Shop profile
+4. **Listing Creation:** User uploads data → API validates → MongoDB store (Individual/Shop)
+5. **Search & Discovery:** User filters → API queries MongoDB → Returns results
+6. **Communication:** Real-time chat → API stores messages → Push notifications
+7. **Reviews & Reports:** User submits → API validates → Updates seller/shop ratings
 
 ---
 
@@ -139,6 +162,12 @@ Mobile/
 │   │   ├── ItemDetailScreen.js
 │   │   ├── ProfileScreen.js
 │   │   ├── PostListingScreen.js
+│   │   ├── IndividualPostListingScreen.js
+│   │   ├── ShopPostListingScreen.js
+│   │   ├── CreateShopScreen.js
+│   │   ├── ShopProfileScreen.js
+│   │   ├── SellerProfileScreen.js
+│   │   ├── SellerTypeSelectionScreen.js
 │   │   ├── EditListingScreen.js
 │   │   ├── ReportBlockUserScreen.js
 │   │   ├── RateReviewScreen.js
@@ -171,6 +200,7 @@ Backend/
 │   ├── models/                   # Mongoose models
 │   │   ├── User.js
 │   │   ├── Listing.js
+│   │   ├── Shop.js
 │   │   ├── Chat.js
 │   │   ├── Message.js
 │   │   ├── Review.js
@@ -180,14 +210,16 @@ Backend/
 │   ├── controllers/              # Business logic
 │   │   ├── authController.js
 │   │   ├── listingController.js
+│   │   ├── shopController.js
 │   │   ├── chatController.js
 │   │   ├── reviewController.js
 │   │   ├── reportController.js
-││   │   ├── wishlistController.js
+│   │   ├── wishlistController.js
 │   │   └── notificationController.js
 │   ├── routes/                   # API routes
 │   │   ├── auth.js
 │   │   ├── listings.js
+│   │   ├── shops.js
 │   │   ├── chats.js
 │   │   ├── reviews.js
 │   │   ├── reports.js
@@ -220,9 +252,18 @@ Backend/
 - `GET /listings/search` - Search listings
 - `GET /listings/mine` - Get my listings
 - `GET /listings/:id` - Get single listing
-- `POST /listings` - Create new listing
+- `POST /listings` - Create new listing (individual or shop)
 - `PUT /listings/:id` - Update listing
 - `DELETE /listings/:id` - Delete listing
+
+### Shops
+- `POST /shops` - Create new shop
+- `GET /shops` - Get all shops (with filters)
+- `GET /shops/mine` - Get my shop
+- `GET /shops/:shopId` - Get shop by ID
+- `PUT /shops/:shopId` - Update shop
+- `GET /shops/:shopId/listings` - Get shop listings
+- `GET /shops/:shopId/reviews` - Get shop reviews
 
 ### Chats
 - `GET /chats` - Get all chats
@@ -347,31 +388,33 @@ Backend/
 ## 📊 Project Metrics
 
 ### Code Statistics
-- **Total Screens:** 20+ screens
+- **Total Screens:** 40+ screens
 - **Total Components:** 30+ reusable components
-- **API Endpoints:** 25+ REST endpoints
-- **Database Models:** 8 MongoDB models
-- **Lines of Code:** ~15,000+ lines
+- **API Endpoints:** 35+ REST endpoints
+- **Database Models:** 9 MongoDB models
+- **Lines of Code:** ~20,000+ lines
 
 ### Development Timeline
 - **Phase 1:** Project setup and basic screens (2 weeks)
 - **Phase 2:** Core marketplace functionality (3 weeks)
 - **Phase 3:** Chat and communication features (2 weeks)
 - **Phase 4:** Profile and review system (2 weeks)
-- **Phase 5:** UI polish and optimization (1 week)
+- **Phase 5:** Shop system and dual seller mode (2 weeks)
+- **Phase 6:** Multi-language and currency support (1 week)
+- **Phase 7:** UI polish and optimization (1 week)
 
 ---
 
 ## 🎯 Future Enhancements
 
 ### Planned Features
-- **Video Listings:** Support for video content
+- **Video Listings:** Support for video content (partially implemented)
 - **Auction System:** Bidding functionality for rare items
 - **Payment Integration:** Direct payment gateways
 - **Social Features:** Follow sellers, share listings
 - **Advanced Analytics:** Seller dashboard with insights
-- **Multi-language Support:** Nepali, English, Hindi
 - **Delivery Partners:** Integration with local couriers
+- **Shop Analytics:** Detailed business analytics and sales reports
 
 ### Technical Improvements
 - **Real-time Chat:** WebSocket integration for instant messaging
@@ -379,6 +422,7 @@ Backend/
 - **Offline Mode:** Full offline functionality with sync
 - **Image Recognition:** AI-powered product categorization
 - **Location Services:** Enhanced geolocation features
+- **Shop Verification System:** Business verification with documents
 
 ---
 
@@ -420,15 +464,51 @@ Backend/
 
 ---
 
-## 📝 Conclusion
+## � Recent Updates (September 2026)
+
+### Shop System Implementation
+The project has been significantly enhanced with a comprehensive Shop System that allows businesses to create and manage their profiles:
+
+**Backend Updates:**
+- Added `Shop.js` Mongoose model with comprehensive business fields
+- Implemented `shopController.js` with full CRUD operations
+- Added `/shops` API routes for shop management
+- Enhanced `Listing.js` model to support shop-specific fields (stock, SKU, brand, original price)
+- Updated user model with `sellerTypePreference` field
+
+**Frontend Updates:**
+- Created `SellerTypeSelectionScreen.js` for choosing between Individual/Shop modes
+- Implemented `CreateShopScreen.js` for business profile setup
+- Added `ShopProfileScreen.js` for public shop pages with products/reviews/about tabs
+- Created `ShopPostListingScreen.js` for shop-specific product posting
+- Enhanced `SellerProfileScreen.js` for individual seller profiles
+- Updated `SettingsScreen.js` with seller preference option
+- Added language and currency selection screens
+
+**Key Features:**
+- Dual seller system (Individual vs Shop)
+- Shop verification badges
+- Inventory management with stock tracking
+- Business location and opening hours
+- Shop-specific product fields (SKU, brand, original price)
+- Shop profiles with ratings and reviews
+- Multi-language support (English, Nepali, Hindi)
+- Currency selection options
+
+---
+
+## �📝 Conclusion
 
 KinBech एक complete local marketplace solution है जो modern e-commerce features को local trust और safety के साथ combine करता है। React Native और Node.js का use करके, यह app cross-platform और scalable है।
 
 ### Key Achievements
 ✅ **Fully Functional Marketplace:** Complete buying/selling cycle  
+✅ **Dual Seller System:** Individual and Shop seller modes  
+✅ **Shop Management:** Complete business profile and inventory system  
 ✅ **Secure Communication:** In-app chat with safety features  
 ✅ **Location-based Discovery:** Find items near you  
 ✅ **User Trust System:** Reviews, ratings, and verification  
+✅ **Multi-language Support:** English, Nepali, and Hindi  
 ✅ **Modern UI/UX:** Beautiful and intuitive interface  
 ✅ **Production Ready:** Scalable architecture and deployment ready  
 
@@ -437,5 +517,5 @@ KinBech Nepal में local commerce को revolutionize करने के 
 ---
 
 **Project Status:** ✅ **Complete & Production Ready**  
-**Last Updated:** September 2026  
+**Last Updated:** September 5, 2026  
 **Maintained By:** KinBech Development Team

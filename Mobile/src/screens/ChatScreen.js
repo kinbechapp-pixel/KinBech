@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import EmptyState from '../components/EmptyState';
 import { openItemDetail, ROUTES } from '../navigation/helpers';
 import { api } from '../services/api';
 import { formatPrice } from '../utils/listing';
@@ -155,15 +156,12 @@ export default function ChatScreen({ navigation, route }) {
         showsVerticalScrollIndicator={false}
       >
         {messages.length === 0 ? (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconWrap}>
-              <Text style={[styles.sparkle, { top: 4, left: 8 }]}>✦</Text>
-              <Text style={[styles.sparkle, { top: 20, right: 4, fontSize: 10 }]}>✦</Text>
-              <Ionicons name="chatbubble-outline" size={64} color={colors.primary} />
-            </View>
-            <Text style={styles.emptyTitle}>Start the conversation</Text>
-            <Text style={styles.emptySubtitle}>Send a message to connect with the seller</Text>
-          </View>
+          <EmptyState
+            compact
+            icon="chatbubble-ellipses-outline"
+            title="Start the conversation"
+            body="Send a message to connect with the seller. Keep chat in the app for safety."
+          />
         ) : (
           <>
             <Text style={styles.dateSeparator}>Today</Text>

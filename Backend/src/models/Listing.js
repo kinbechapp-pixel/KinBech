@@ -3,6 +3,19 @@ const mongoose = require('mongoose');
 const listingSchema = new mongoose.Schema(
   {
     seller: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    sellerType: { 
+      type: String, 
+      enum: ['individual', 'shop'], 
+      required: true,
+      default: 'individual',
+      index: true 
+    },
+    shopId: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: 'Shop', 
+      default: null,
+      index: true 
+    },
     title: { type: String, required: true, trim: true },
     description: { type: String, default: '' },
     price: { type: Number, required: true, min: 0 },
@@ -27,11 +40,19 @@ const listingSchema = new mongoose.Schema(
       index: true,
     },
     views: { type: Number, default: 0, index: true },
+    // Shop-specific fields
+    stock: { type: Number, default: 1, min: 0 },
+    brand: { type: String, default: '' },
+    sku: { type: String, default: '' },
+    originalPrice: { type: Number, default: null },
+    isOnSale: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
 listingSchema.index({ title: 'text', description: 'text', location: 'text' });
 listingSchema.index({ 'coordinates.lat': 1, 'coordinates.lng': 1 });
+listingSchema.index({ sellerType: 1, status: 1 });
+listingSchema.index({ shopId: 1, status: 1 });
 
 module.exports = mongoose.model('Listing', listingSchema);

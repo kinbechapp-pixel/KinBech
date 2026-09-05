@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GradientButton from '../components/GradientButton';
 import { navigateToTab } from '../navigation/helpers';
 import { useTheme, useThemedStyles, ThemeStatusBar } from '../theme';
@@ -86,13 +86,13 @@ export default function InfoScreen({ navigation, route }) {
   };
 
   return (
-    <SafeAreaView style={styles.root} edges={['top']}>
+    <View style={styles.root}>
       <ThemeStatusBar variant="header" />
       <LinearGradient
         colors={colors.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
-        style={[styles.header, { paddingTop: insets.top + 4 }]}
+        style={[styles.header, { paddingTop: insets.top + 8 }]}
       >
         <Pressable onPress={() => navigation.goBack()} hitSlop={12} style={styles.back}>
           <Ionicons name="chevron-back" size={26} color={colors.onGradient} />
@@ -111,6 +111,6 @@ export default function InfoScreen({ navigation, route }) {
           <GradientButton title={buttonLabel} onPress={handlePress} style={styles.button} />
         ) : null}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

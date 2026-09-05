@@ -6,16 +6,20 @@ import { useMemo } from 'react';
 import BottomTabBar from '../components/BottomTabBar';
 import { useTheme } from '../theme';
 import AllCategoriesScreen from '../screens/AllCategoriesScreen';
-import CategoryScreen from '../screens/CategoryScreen';
 import ChatListScreen from '../screens/ChatListScreen';
 import ChatScreen from '../screens/ChatScreen';
+import CreateShopScreen from '../screens/CreateShopScreen';
+import CurrencySelectScreen from '../screens/CurrencySelectScreen';
 import EditListingScreen from '../screens/EditListingScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
 import EmptyStateScreen from '../screens/EmptyStateScreen';
 import ExploreScreen from '../screens/ExploreScreen';
 import HelpSupportScreen from '../screens/HelpSupportScreen';
 import HomeScreen from '../screens/HomeScreen';
+import IndividualPostListingScreen from '../screens/IndividualPostListingScreen';
 import InfoScreen from '../screens/InfoScreen';
 import ItemDetailScreen from '../screens/ItemDetailScreen';
+import LanguageSelectScreen from '../screens/LanguageSelectScreen';
 import ListingSuccessScreen from '../screens/ListingSuccessScreen';
 import LoginScreen from '../screens/LoginScreen';
 import MeetupConfirmationScreen from '../screens/MeetupConfirmationScreen';
@@ -24,14 +28,21 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import OtpVerificationScreen from '../screens/OtpVerificationScreen';
 import PostListingScreen from '../screens/PostListingScreen';
+import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
+import PrivacyScreen from '../screens/PrivacyScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ProfileSetupScreen from '../screens/ProfileSetupScreen';
 import RateReviewScreen from '../screens/RateReviewScreen';
 import ReportBlockUserScreen from '../screens/ReportBlockUserScreen';
 import SearchResultsScreen from '../screens/SearchResultsScreen';
 import SellerProfileScreen from '../screens/SellerProfileScreen';
+import SellerTypeSelectionScreen from '../screens/SellerTypeSelectionScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import StoreCategorySelectionScreen from '../screens/StoreCategorySelectionScreen';
+import ShopPostListingScreen from '../screens/ShopPostListingScreen';
+import ShopProfileScreen from '../screens/ShopProfileScreen';
 import SplashScreen from '../screens/SplashScreen';
+import TermsScreen from '../screens/TermsScreen';
 import WishlistScreen from '../screens/WishlistScreen';
 
 const Stack = createNativeStackNavigator();
@@ -97,7 +108,6 @@ export default function AppNavigator() {
         <Stack.Screen name="MainTabs" component={MainTabs} />
 
         <Stack.Screen name="AllCategories" component={AllCategoriesScreen} />
-        <Stack.Screen name="Category" component={CategoryScreen} />
         <Stack.Screen name="SearchResults" component={SearchResultsScreen} />
         <Stack.Screen
           name="ItemDetail"
@@ -129,6 +139,11 @@ export default function AppNavigator() {
           })}
         />
         <Stack.Screen name="PostListing" component={PostListingScreen} />
+        <Stack.Screen name="SellerTypeSelection" component={SellerTypeSelectionScreen} />
+        <Stack.Screen name="StoreCategorySelection" component={StoreCategorySelectionScreen} />
+        <Stack.Screen name="IndividualPostListing" component={IndividualPostListingScreen} />
+        <Stack.Screen name="ShopPostListing" component={ShopPostListingScreen} />
+        <Stack.Screen name="CreateShop" component={CreateShopScreen} />
         <Stack.Screen name="EditListing" component={EditListingScreen} />
         <Stack.Screen name="MyListings" component={MyListingsScreen} />
         <Stack.Screen name="ListingSuccess" component={ListingSuccessScreen} />
@@ -143,6 +158,13 @@ export default function AppNavigator() {
         <Stack.Screen name="EmptyState" component={EmptyStateScreen} />
         <Stack.Screen name="Info" component={InfoScreen} />
         <Stack.Screen name="SellerProfile" component={SellerProfileScreen} />
+        <Stack.Screen name="ShopProfile" component={ShopProfileScreen} />
+        <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+        <Stack.Screen name="Privacy" component={PrivacyScreen} />
+        <Stack.Screen name="LanguageSelect" component={LanguageSelectScreen} />
+        <Stack.Screen name="CurrencySelect" component={CurrencySelectScreen} />
+        <Stack.Screen name="Terms" component={TermsScreen} />
+        <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

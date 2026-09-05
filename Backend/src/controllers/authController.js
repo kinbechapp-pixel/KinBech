@@ -209,6 +209,9 @@ async function updateMe(req, res, next) {
     if (req.body.profileComplete !== undefined) {
       req.user.profileComplete = Boolean(req.body.profileComplete);
     }
+    if (req.body.sellerTypePreference !== undefined) {
+      req.user.sellerTypePreference = String(req.body.sellerTypePreference);
+    }
 
     await req.user.save();
     const token = signUserToken(req.user);
@@ -247,4 +250,23 @@ async function updatePreferences(req, res, next) {
   }
 }
 
-module.exports = { signup, login, verifyOtp, me, updateMe, completeSignup, updatePreferences };
+async function getBlockedUsers(req, res, next) {
+  try {
+    const ids = Array.isArray(req.user.blockedUserIds) ? req.user.blockedUserIds : [];
+    const users = ids.length
+      ? await User.find({ _id: { $in: ids } }, 'name avatarUrl phone')
+      : [];
+    res.json({
+      users: users.map((u) => ({
+        id: u._id.toString(),
+        name: u.name,
+        avatarUrl: u.avatarUrl,
+        phone: u.phone,
+      })),
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = { signup, login, verifyOtp, me, updateMe, completeSignup, updatePreferences, getBlockedUsers };

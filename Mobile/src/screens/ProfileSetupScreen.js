@@ -142,6 +142,71 @@ const createStyles = (colors) => ({
     color: colors.primary,
     fontWeight: '600',
   },
+  sellerTypeSection: {
+    marginTop: 12,
+  },
+  sellerTypeTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  sellerTypeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: colors.iconBackground,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 10,
+  },
+  sellerTypeOptionSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  sellerTypeRadio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  sellerTypeRadioSelected: {
+    borderColor: colors.onPrimary,
+  },
+  sellerTypeRadioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
+  },
+  sellerTypeRadioInnerSelected: {
+    backgroundColor: colors.onPrimary,
+  },
+  sellerTypeContent: {
+    flex: 1,
+  },
+  sellerTypeOptionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  sellerTypeOptionTitleSelected: {
+    color: colors.onPrimary,
+  },
+  sellerTypeOptionDesc: {
+    fontSize: 12,
+    color: colors.textMuted,
+  },
+  sellerTypeOptionDescSelected: {
+    color: 'rgba(255,255,255,0.8)',
+  },
 });
 
 export default function ProfileSetupScreen({ navigation, route }) {
@@ -154,6 +219,7 @@ export default function ProfileSetupScreen({ navigation, route }) {
   const [location, setLocation] = useState('');
   const [coordinates, setCoordinates] = useState(null);
   const [avatarUri, setAvatarUri] = useState(user?.avatarUrl || '');
+  const [sellerTypePreference, setSellerTypePreference] = useState('individual');
   const [loading, setLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   const [alertConfig, setAlertConfig] = useState(null);
@@ -250,6 +316,7 @@ export default function ProfileSetupScreen({ navigation, route }) {
         location: location.trim(),
         avatarUrl: avatarUri,
         coordinates: coordinates,
+        sellerTypePreference: sellerTypePreference,
       });
 
       setLoading(false);
@@ -344,6 +411,78 @@ export default function ProfileSetupScreen({ navigation, route }) {
                   <Text style={styles.locationButtonText}>Use Current Location</Text>
                 </>
               )}
+            </Pressable>
+          </View>
+
+          <View style={styles.sellerTypeSection}>
+            <Text style={styles.sellerTypeTitle}>How do you want to sell?</Text>
+            
+            <Pressable
+              style={[
+                styles.sellerTypeOption,
+                sellerTypePreference === 'individual' && styles.sellerTypeOptionSelected
+              ]}
+              onPress={() => setSellerTypePreference('individual')}
+            >
+              <View style={[
+                styles.sellerTypeRadio,
+                sellerTypePreference === 'individual' && styles.sellerTypeRadioSelected
+              ]}>
+                {sellerTypePreference === 'individual' && (
+                  <View style={[
+                    styles.sellerTypeRadioInner,
+                    styles.sellerTypeRadioInnerSelected
+                  ]} />
+                )}
+              </View>
+              <View style={styles.sellerTypeContent}>
+                <Text style={[
+                  styles.sellerTypeOptionTitle,
+                  sellerTypePreference === 'individual' && styles.sellerTypeOptionTitleSelected
+                ]}>
+                  👤 Individual Seller
+                </Text>
+                <Text style={[
+                  styles.sellerTypeOptionDesc,
+                  sellerTypePreference === 'individual' && styles.sellerTypeOptionDescSelected
+                ]}>
+                  Sell personal items like used phones, furniture, etc.
+                </Text>
+              </View>
+            </Pressable>
+
+            <Pressable
+              style={[
+                styles.sellerTypeOption,
+                sellerTypePreference === 'shop' && styles.sellerTypeOptionSelected
+              ]}
+              onPress={() => setSellerTypePreference('shop')}
+            >
+              <View style={[
+                styles.sellerTypeRadio,
+                sellerTypePreference === 'shop' && styles.sellerTypeRadioSelected
+              ]}>
+                {sellerTypePreference === 'shop' && (
+                  <View style={[
+                    styles.sellerTypeRadioInner,
+                    styles.sellerTypeRadioInnerSelected
+                  ]} />
+                )}
+              </View>
+              <View style={styles.sellerTypeContent}>
+                <Text style={[
+                  styles.sellerTypeOptionTitle,
+                  sellerTypePreference === 'shop' && styles.sellerTypeOptionTitleSelected
+                ]}>
+                  🏪 Shop Owner
+                </Text>
+                <Text style={[
+                  styles.sellerTypeOptionDesc,
+                  sellerTypePreference === 'shop' && styles.sellerTypeOptionDescSelected
+                ]}>
+                  Run a business and sell products with reviews & ratings
+                </Text>
+              </View>
             </Pressable>
           </View>
 

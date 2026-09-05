@@ -6,7 +6,6 @@ import {
   Image,
   Pressable,
   ScrollView,
-  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -15,6 +14,7 @@ import { useSharedTransition } from '../context/SharedTransitionContext';
 import { openItemDetail, navigateToTab, ROUTES, TABS } from '../navigation/helpers';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import EmptyState from '../components/EmptyState';
 import { formatPrice } from '../utils/listing';
 import { useTheme, useThemedStyles, ThemeStatusBar } from '../theme';
 
@@ -41,7 +41,7 @@ export default function MyListingsScreen({ navigation, route }) {
   const [tab, setTab] = useState(route?.params?.initialTab || 'active');
   const [sortBy, setSortBy] = useState('newest');
   const [listings, setListings] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const loadListings = useCallback(async () => {
     setLoading(true);
@@ -56,8 +56,8 @@ export default function MyListingsScreen({ navigation, route }) {
           ...listing,
           id: listing.id || listing._id,
           imageUrl: listing.photos?.[0] || '',
-          views: listing.views ?? Math.floor(Math.random() * 200),
-          chats: listing.chats ?? Math.floor(Math.random() * 15),
+          views: listing.views ?? 0,
+          chats: listing.chats ?? 0,
         }))
       );
     }
@@ -218,29 +218,19 @@ export default function MyListingsScreen({ navigation, route }) {
           </Pressable>
         </View>
 
-        {loading ? (
-          <View style={styles.loading}>
-            <ActivityIndicator color={colors.gradientStart} size="large" />
-          </View>
-        ) : filteredListings.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="cube-outline" size={56} color={colors.textMuted} />
-            <Text style={styles.emptyTitle}>
-              {tab === 'active' ? 'No Active Listings' : 'No Sold Listings Yet'}
-            </Text>
-            <Text style={styles.emptySubtitle}>
-              {tab === 'active'
-                ? 'Tap + Post New to sell your first item.'
-                : 'Your sold items will appear here.'}
-            </Text>
-            <Pressable
-              onPress={() => navigation.navigate(ROUTES.POST_LISTING)}
-              style={styles.emptyPostBtn}
-            >
-              <Ionicons name="add" size={18} color={colors.onPrimary} />
-              <Text style={styles.emptyPostBtnText}>Create Listing</Text>
-            </Pressable>
-          </View>
+        {filteredListings.length === 0 ? (
+          <EmptyState
+            compact
+            icon={tab === 'active' ? 'pricetag-outline' : 'checkmark-circle-outline'}
+            title={tab === 'active' ? 'No active listings' : 'No sold listings yet'}
+            body={
+              tab === 'active'
+                ? 'Post an item and it will show up here for buyers.'
+                : 'When a listing is marked sold, it will appear in this tab.'
+            }
+            buttonLabel={tab === 'active' ? 'Create listing' : undefined}
+            onButtonPress={tab === 'active' ? () => navigation.navigate(ROUTES.POST_LISTING) : undefined}
+          />
         ) : (
           <View style={styles.listContent}>
             {filteredListings.map((item) => (

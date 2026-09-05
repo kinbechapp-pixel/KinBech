@@ -9,14 +9,22 @@ function signUserToken(user) {
 }
 
 function publicUser(user) {
+  const defaultPrefs = { notifications: true, language: 'English', currency: 'NPR (₨)' };
+  const prefs = user.preferences
+    ? { ...defaultPrefs, ...(user.preferences.toObject ? user.preferences.toObject() : user.preferences) }
+    : defaultPrefs;
   return {
     id: user._id.toString(),
     name: user.name,
     phone: user.phone,
     avatarUrl: user.avatarUrl,
-    rating: user.rating,
     soldCount: user.soldCount,
     boughtCount: user.boughtCount,
+    preferences: prefs,
+    location: user.location || '',
+    coordinates: user.coordinates || null,
+    blockedCount: Array.isArray(user.blockedUserIds) ? user.blockedUserIds.length : 0,
+    createdAt: user.createdAt || null,
   };
 }
 

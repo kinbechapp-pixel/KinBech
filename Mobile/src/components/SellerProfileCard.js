@@ -248,6 +248,110 @@ const createStyles = (colors) => ({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Individual Seller Design
+  individualCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 14,
+    width: CARD_WIDTH,
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  individualHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  individualAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.iconBackground,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: colors.border,
+  },
+  individualInfo: {
+    flex: 1,
+  },
+  individualName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  individualVerified: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  individualVerifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: colors.pastelGreen,
+  },
+  individualVerifiedText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  individualStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 10,
+  },
+  individualStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  individualStatIcon: {
+    fontSize: 14,
+  },
+  individualStatValue: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  individualStatLabel: {
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  individualLocation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 10,
+  },
+  individualLocationText: {
+    fontSize: 11,
+    color: colors.textMuted,
+    flex: 1,
+  },
+  individualButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  individualButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.onPrimary,
+  },
 });
 
 const SellerProfileCard = memo(function SellerProfileCard({
@@ -266,6 +370,7 @@ const SellerProfileCard = memo(function SellerProfileCard({
   isFollowing = false,
   productGallery = [],
   compact = false,
+  sellerType = 'shop', // 'shop' or 'individual'
   onPress,
   onPinToggle,
   onFollowToggle,
@@ -363,7 +468,7 @@ const SellerProfileCard = memo(function SellerProfileCard({
             {displayAvatar ? (
               <Image source={{ uri: displayAvatar }} style={styles.avatarImage} />
             ) : (
-              <Ionicons name="storefront-outline" size={24} color={colors.textMuted} />
+              <Ionicons name={sellerType === 'individual' ? 'person-outline' : 'storefront-outline'} size={24} color={colors.textMuted} />
             )}
           </View>
 
@@ -381,6 +486,81 @@ const SellerProfileCard = memo(function SellerProfileCard({
               </View>
             )}
           </View>
+        </Pressable>
+      </Animated.View>
+    );
+  }
+
+  // Individual Seller Design (simpler, no banner)
+  if (sellerType === 'individual') {
+    return (
+      <Animated.View style={[styles.individualCard, { transform: [{ scale: scaleAnim }] }]}>
+        <Pressable
+          onPress={handlePress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+        >
+          <View style={styles.individualHeader}>
+            <View style={styles.individualAvatar}>
+              {displayAvatar ? (
+                <Image source={{ uri: displayAvatar }} style={styles.avatarImage} />
+              ) : (
+                <Ionicons name="person-outline" size={28} color={colors.textMuted} />
+              )}
+            </View>
+            <View style={styles.individualInfo}>
+              <Text style={styles.individualName} numberOfLines={1}>{displayName}</Text>
+              {verified && (
+                <View style={styles.individualVerified}>
+                  <View style={styles.individualVerifiedBadge}>
+                    <Ionicons name="checkmark-circle" size={8} color={colors.primary} />
+                    <Text style={styles.individualVerifiedText}>Verified</Text>
+                  </View>
+                </View>
+              )}
+            </View>
+            <Animated.View style={{ transform: [{ scale: pinScaleAnim }] }}>
+              <Pressable
+                onPress={handlePinToggle}
+                hitSlop={8}
+                style={styles.pinButton}
+              >
+                <Ionicons
+                  name={pinned ? 'bookmark' : 'bookmark-outline'}
+                  size={16}
+                  color={pinned ? colors.primary : colors.textMuted}
+                />
+              </Pressable>
+            </Animated.View>
+          </View>
+
+          <View style={styles.individualStats}>
+            <View style={styles.individualStat}>
+              <Ionicons name="star" size={14} color={colors.warning} style={styles.individualStatIcon} />
+              <Text style={styles.individualStatValue}>{displayRating}</Text>
+              <Text style={styles.individualStatLabel}>({displayReviews})</Text>
+            </View>
+            <View style={styles.individualStat}>
+              <Ionicons name="cube-outline" size={14} color={colors.textMuted} style={styles.individualStatIcon} />
+              <Text style={styles.individualStatValue}>{displayListings}</Text>
+              <Text style={styles.individualStatLabel}>items</Text>
+            </View>
+            {distanceLabel && (
+              <View style={styles.individualStat}>
+                <Ionicons name="location-outline" size={14} color={colors.textMuted} style={styles.individualStatIcon} />
+                <Text style={styles.individualStatText}>{distanceLabel}</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.individualLocation}>
+            <Ionicons name="location-outline" size={12} color={colors.textMuted} />
+            <Text style={styles.individualLocationText} numberOfLines={1}>{displayLocation}</Text>
+          </View>
+
+          <Pressable style={styles.individualButton} onPress={handlePress}>
+            <Text style={styles.individualButtonText}>View Profile</Text>
+          </Pressable>
         </Pressable>
       </Animated.View>
     );

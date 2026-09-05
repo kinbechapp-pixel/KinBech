@@ -8,6 +8,7 @@ const wishlistRoutes = require('./routes/wishlist');
 const notificationRoutes = require('./routes/notifications');
 const reportRoutes = require('./routes/reports');
 const reviewRoutes = require('./routes/reviews');
+const shopRoutes = require('./routes/shops');
 const { notFound, errorHandler } = require('./middleware/error');
 
 const app = express();
@@ -39,6 +40,7 @@ app.use('/wishlist', wishlistRoutes);
 app.use('/notifications', notificationRoutes);
 app.use('/reports', reportRoutes);
 app.use('/reviews', reviewRoutes);
+app.use('/shops', shopRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

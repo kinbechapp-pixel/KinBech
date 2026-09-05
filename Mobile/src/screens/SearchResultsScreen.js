@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import EmptyState from '../components/EmptyState';
 import FilterBottomSheet from '../components/FilterBottomSheet';
 import { useSharedTransition } from '../context/SharedTransitionContext';
 import { openItemDetail } from '../navigation/helpers';
@@ -237,7 +238,7 @@ export default function SearchResultsScreen({ navigation, route }) {
 
       <View style={styles.resultsRow}>
         <Text style={styles.resultsCount}>
-          {loading ? 'Searching...' : `${listings.length} results found`}
+          {`${listings.length} results found`}
         </Text>
         <Pressable style={styles.sortBtn} onPress={cycleSort}>
           <Ionicons name="swap-vertical" size={15} color={colors.text} />
@@ -339,25 +340,14 @@ export default function SearchResultsScreen({ navigation, route }) {
           </View>
         )}
 
-        {listings.length === 0 && !loading && (
-          <View style={styles.emptyCard}>
-            <View style={styles.emptyIconWrap}>
-              <Text style={[styles.sparkle, { top: 0, left: 10 }]}>✦</Text>
-              <Text style={[styles.sparkle, { bottom: 6, right: 4, fontSize: 10 }]}>✦</Text>
-              <Ionicons name="search" size={54} color={colors.primary} />
-            </View>
-            <Text style={styles.emptyTitle}>No results found</Text>
-            <Text style={styles.emptySubtitle}>
-              Try adjusting your search or filters{'\n'}to find what you're looking for.
-            </Text>
-          </View>
-        )}
-
-        {loading && (
-          <View style={styles.loadingRow}>
-            <Text style={styles.loadingText}>Loading results…</Text>
-          </View>
-        )}
+        {listings.length === 0 ? (
+          <EmptyState
+            compact
+            icon="search-outline"
+            title="No results found"
+            body="Try another search or change filters to find what you need."
+          />
+        ) : null}
       </ScrollView>
 
       <FilterBottomSheet

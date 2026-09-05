@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from '../services/api';
+import EmptyState from '../components/EmptyState';
 
 /**
  * Resolve color references (e.g., 'colors.iconBackground') to actual color values
@@ -48,7 +49,6 @@ export default function EditListingScreen({ navigation, route }) {
   const [price, setPrice] = useState(incoming?.price != null ? String(incoming.price) : '');
   const [markSold, setMarkSold] = useState(incoming?.status === 'sold');
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [listingNotFound, setListingNotFound] = useState(false);
 
   useEffect(() => {
@@ -57,7 +57,6 @@ export default function EditListingScreen({ navigation, route }) {
     (async () => {
       const { data, error } = await api.getListing(listingId);
       if (!active) return;
-      setLoading(false);
       if (error || !data?.listing) {
         setListingNotFound(true);
         return;
@@ -113,37 +112,18 @@ export default function EditListingScreen({ navigation, route }) {
     return null;
   }
 
-  if (loading) {
-    return (
-      <View style={styles.root}>
-        <ThemeStatusBar variant="header" />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      </View>
-    );
-  }
-
   if (listingNotFound) {
     return (
       <View style={styles.root}>
         <ThemeStatusBar variant="header" />
-        <View style={styles.emptyState}>
-          <View style={styles.emptyIconWrap}>
-            <Text style={[styles.sparkle, { top: 4, left: 8 }]}>✦</Text>
-            <Text style={[styles.sparkle, { top: 20, right: 4, fontSize: 10 }]}>✦</Text>
-            <Ionicons name="cube-outline" size={64} color={colors.textMuted} />
-          </View>
-          <Text style={styles.emptyTitle}>Listing Not Found</Text>
-          <Text style={styles.emptySubtitle}>This listing may have been removed or is no longer available</Text>
-          <Pressable
-            style={styles.backBtn}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={20} color={colors.primary} />
-            <Text style={styles.backBtnText}>Go Back</Text>
-          </Pressable>
-        </View>
+        <EmptyState
+          compact
+          icon="alert-circle-outline"
+          title="Listing not found"
+          body="This listing may have been removed or is no longer available."
+          buttonLabel="Go back"
+          onButtonPress={() => navigation.goBack()}
+        />
       </View>
     );
   }

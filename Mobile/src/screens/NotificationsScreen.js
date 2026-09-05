@@ -6,11 +6,11 @@ import {
   ScrollView,
   Text,
   View,
-  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { navigateToTab, openItemDetail, ROUTES, TABS } from '../navigation/helpers';
+import { navigateToTab, ROUTES, TABS } from '../navigation/helpers';
 import { api } from '../services/api';
+import EmptyState from '../components/EmptyState';
 import { useTheme, useThemedStyles, ThemeStatusBar } from '../theme';
 
 /**
@@ -113,12 +113,8 @@ export default function NotificationsScreen({ navigation }) {
         />
       </View>
 
-      <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-        {loading ? (
-          <View style={styles.loadingState}>
-            <ActivityIndicator size="large" color={colors.primary} />
-          </View>
-        ) : list.length > 0 ? (
+      <ScrollView contentContainerStyle={[styles.list, list.length === 0 && { flexGrow: 1 }]} showsVerticalScrollIndicator={false}>
+        {list.length > 0 ? (
           (list || []).map((item) => (
             <Pressable
               key={item.id}
@@ -141,11 +137,12 @@ export default function NotificationsScreen({ navigation }) {
             </Pressable>
           ))
         ) : (
-          <View style={styles.emptyState}>
-            <Ionicons name="notifications-off-outline" size={48} color={colors.textMuted} />
-            <Text style={styles.emptyTitle}>No notifications</Text>
-            <Text style={styles.emptySubtitle}>Notifications will appear here</Text>
-          </View>
+          <EmptyState
+            compact
+            icon="notifications-off-outline"
+            title="No notifications"
+            body="You’ll see updates about chats, listings, and offers here."
+          />
         )}
       </ScrollView>
     </View>

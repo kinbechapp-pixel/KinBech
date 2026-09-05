@@ -7,13 +7,13 @@ import {
   ScrollView,
   Text,
   View,
-  ActivityIndicator,
   Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSharedTransition } from '../context/SharedTransitionContext';
 import { openItemDetail } from '../navigation/helpers';
 import { api } from '../services/api';
+import EmptyState from '../components/EmptyState';
 import { formatPrice } from '../utils/listing';
 import { useTheme, useThemedStyles, ThemeStatusBar } from '../theme';
 
@@ -513,7 +513,6 @@ export default function SellerProfileScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('active');
   const [activeTab, setActiveTab] = useState('listings');
-  const [sellerStats, setSellerStats] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
 
@@ -531,21 +530,6 @@ export default function SellerProfileScreen({ navigation, route }) {
           const res = await api.getListings({ seller: sellerId, status: statusForApi });
           data = res.data;
           error = res.error;
-          
-          // Fetch seller reviews for stats
-          const reviewsRes = await api.getUserReviews(sellerId);
-          if (!reviewsRes.error && reviewsRes.data?.reviews) {
-            const reviews = reviewsRes.data.reviews;
-            const avgRating = reviews.length > 0 
-              ? (reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length).toFixed(1)
-              : seller?.rating || '4.8';
-            
-            setSellerStats({
-              rating: avgRating,
-              reviewsCount: reviews.length,
-              totalSold: reviews.filter(r => r.rating >= 4).length, // Approximate sold count
-            });
-          }
         } else {
           await new Promise((r) => setTimeout(r, 300));
         }
@@ -579,11 +563,12 @@ export default function SellerProfileScreen({ navigation, route }) {
             <Ionicons name="chevron-back" size={24} color={colors.onPrimary} />
           </Pressable>
         </View>
-        <View style={styles.emptyState}>
-          <Ionicons name="person-outline" size={64} color={colors.textMuted} style={styles.emptyIcon} />
-          <Text style={styles.emptyTitle}>Seller Not Found</Text>
-          <Text style={styles.emptySubtitle}>Unable to load seller information</Text>
-        </View>
+        <EmptyState
+          compact
+          icon="person-outline"
+          title="Seller not found"
+          body="This profile is unavailable right now."
+        />
       </View>
     );
   }
@@ -622,19 +607,9 @@ export default function SellerProfileScreen({ navigation, route }) {
                   <Text style={styles.name}>{seller.name || 'Seller'}</Text>
                   <Ionicons name="checkmark-circle" size={20} color={colors.onPrimary} style={styles.verifiedBadge} />
                 </View>
-                <Text style={styles.tagline}>Quality products at best price 🛍️</Text>
+                <Text style={styles.tagline}>Individual Seller</Text>
 
                 <View style={styles.statsRow}>
-                  <View style={styles.statCol}>
-                    <View style={styles.statTop}>
-                      <Ionicons name="star" size={15} color="#FFD700" style={styles.statIcon} />
-                      <Text style={styles.ratingText}>{sellerStats?.rating || seller.rating || '4.8'}</Text>
-                      <Ionicons name="star" size={12} color="#FFD700" style={styles.statIcon} />
-                    </View>
-                    <Text style={styles.statReviews}>({sellerStats?.reviewsCount || seller.reviewsCount || 0})</Text>
-                    <Text style={styles.statLabel}>Rating</Text>
-                  </View>
-
                   <View style={styles.statCol}>
                     <View style={styles.statTop}>
                       <Ionicons name="cube-outline" size={16} color="rgba(255,255,255,0.85)" style={styles.statIcon} />
@@ -654,11 +629,6 @@ export default function SellerProfileScreen({ navigation, route }) {
                   </View>
                 </View>
               </View>
-
-              <Pressable style={styles.followBtn}>
-                <Ionicons name="person-add" size={16} color={colors.gradientStart} />
-                <Text style={styles.followBtnText}>Follow</Text>
-              </Pressable>
             </View>
           </View>
         </View>
@@ -731,16 +701,13 @@ export default function SellerProfileScreen({ navigation, route }) {
               </Pressable>
             </View>
 
-            {loading ? (
-              <View style={styles.loading}>
-                <ActivityIndicator color={colors.gradientStart} size="large" />
-              </View>
-            ) : listings.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Ionicons name="cube-outline" size={48} color={colors.textMuted} style={styles.emptyIcon} />
-                <Text style={styles.emptyTitle}>No Listings</Text>
-                <Text style={styles.emptySubtitle}>This seller has no items for sale</Text>
-              </View>
+            {listings.length === 0 ? (
+              <EmptyState
+                compact
+                icon="cube-outline"
+                title="No listings"
+                body="This seller has not posted any items yet."
+              />
             ) : (
               <View style={styles.grid}>
                 {listings.map((listing) => {
@@ -774,20 +741,6 @@ export default function SellerProfileScreen({ navigation, route }) {
 
                       <View style={styles.listingPriceRow}>
                         <Text style={styles.listingPrice} sharedTransitionTag={`item.${id}.price`}>{formatPrice(listing.price)}</Text>
-                        <View style={styles.priceTrendBadge}>
-                          <Ionicons name="trending-up" size={11} color={colors.gradientStart} />
-                          <Text style={styles.priceTrendBadgeText}>Low to High</Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.listingRatingRow}>
-                        <View style={styles.listingRating}>
-                          <Ionicons name="star" size={12} color={colors.rating} />
-                          <Text style={styles.listingRatingText}>{listing.rating || seller.rating || '—'}</Text>
-                          {listing.reviews != null ? (
-                            <Text style={styles.listingReviews}>({listing.reviews})</Text>
-                          ) : null}
-                        </View>
                       </View>
 
                       <View style={styles.listingLocationRow}>
@@ -847,10 +800,6 @@ export default function SellerProfileScreen({ navigation, route }) {
               <View style={styles.aboutInfoItem}>
                 <Ionicons name="checkmark-circle" size={16} color={colors.success} />
                 <Text style={styles.aboutInfoText}>Verified Seller</Text>
-              </View>
-              <View style={styles.aboutInfoItem}>
-                <Ionicons name="star" size={16} color={colors.warning} />
-                <Text style={styles.aboutInfoText}>{sellerStats?.rating || seller.rating || '4.8'} Rating</Text>
               </View>
             </View>
           </View>

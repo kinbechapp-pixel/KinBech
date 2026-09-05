@@ -285,6 +285,8 @@ export function buildColors(modeKey = 'dark') {
     supportSafetyIcon: m.success,
     supportReportBg: tint(m.error, isDark ? 0.20 : 0.10),
     supportReportIcon: m.error,
+    supportPaymentsBg: tint(m.warning, isDark ? 0.20 : 0.12),
+    supportPaymentsIcon: m.warning,
 
     socialGoogle: '#EA4335',
     socialApple: isDark ? '#F9FAFB' : '#111111',

@@ -1,0 +1,91 @@
+const mongoose = require('mongoose');
+
+const shopSchema = new mongoose.Schema(
+  {
+    owner: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: 'User', 
+      required: true, 
+      index: true 
+    },
+    name: { 
+      type: String, 
+      required: true, 
+      trim: true,
+      index: true 
+    },
+    logo: { 
+      type: String, 
+      default: '' 
+    },
+    category: { 
+      type: String, 
+      required: true,
+      enum: ['Mobiles', 'Laptops', 'Electronics', 'Furniture', 'Vehicles', 'Clothing', 'Grocery', 'Other'],
+      index: true 
+    },
+    description: { 
+      type: String, 
+      trim: true, 
+      default: '' 
+    },
+    phone: { 
+      type: String, 
+      trim: true 
+    },
+    address: { 
+      type: String, 
+      trim: true, 
+      default: '' 
+    },
+    location: { 
+      type: String, 
+      trim: true, 
+      default: '' 
+    },
+    coordinates: {
+      lat: { type: Number, default: null },
+      lng: { type: Number, default: null },
+    },
+    openingHours: {
+      type: String,
+      default: '9:00 AM - 8:00 PM'
+    },
+    isVerified: { 
+      type: Boolean, 
+      default: false,
+      index: true 
+    },
+    ratingAverage: { 
+      type: Number, 
+      default: 0,
+      min: 0,
+      max: 5 
+    },
+    reviewCount: { 
+      type: Number, 
+      default: 0,
+      min: 0 
+    },
+    followersCount: { 
+      type: Number, 
+      default: 0,
+      min: 0 
+    },
+    status: {
+      type: String,
+      enum: ['active', 'inactive', 'suspended'],
+      default: 'active',
+      index: true
+    }
+  },
+  { timestamps: true, collection: 'shops' }
+);
+
+// Indexes for better query performance
+shopSchema.index({ owner: 1, status: 1 });
+shopSchema.index({ category: 1, status: 1 });
+shopSchema.index({ ratingAverage: -1 });
+shopSchema.index({ name: 'text', description: 'text' });
+
+module.exports = mongoose.model('Shop', shopSchema);

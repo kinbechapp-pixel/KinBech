@@ -3,7 +3,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import {
-  ActivityIndicator,
   Animated,
   Easing,
   Image,
@@ -18,11 +17,12 @@ import { useSharedTransition } from '../context/SharedTransitionContext';
 import { openItemDetail, ROUTES } from '../navigation/helpers';
 import { api } from '../services/api';
 import { attachDistanceToCard, toCardItem } from '../utils/listing';
+import EmptyState from '../components/EmptyState';
 import { useTheme, useThemedStyles, ThemeStatusBar } from '../theme';
 import { useAuth } from '../context/AuthContext';
-import { Skeleton, ProductCardSkeleton } from '../components/SkeletonLoader';
 
-const DEFAULT_CATEGORIES = [
+// Product categories
+const PRODUCT_CATEGORIES = [
   { label: 'Mobiles', icon: 'phone-portrait-outline', tint: '#5B39C6' },
   { label: 'Laptops', icon: 'laptop-outline', tint: '#16A34A' },
   { label: 'Electronics', icon: 'headset-outline', tint: '#DB2777' },
@@ -30,6 +30,25 @@ const DEFAULT_CATEGORIES = [
   { label: 'Vehicles', icon: 'car-outline', tint: '#4F46E5' },
   { label: 'Fashion', icon: 'shirt-outline', tint: '#EC4899' },
   { label: 'Sports & Fitness', icon: 'bicycle-outline', tint: '#0D9488' },
+];
+
+// Business/Store categories for local market
+const BUSINESS_CATEGORIES = [
+  { label: 'Grocery & Kirana', icon: 'basket-outline', tint: '#5B39C6' },
+  { label: 'Electronics', icon: 'hardware-chip-outline', tint: '#16A34A' },
+  { label: 'Clothing & Fashion', icon: 'shirt-outline', tint: '#DB2777' },
+  { label: 'Furniture & Home', icon: 'home-outline', tint: '#059669' },
+  { label: 'Medical & Pharmacy', icon: 'medkit-outline', tint: '#4F46E5' },
+  { label: 'Food & Restaurant', icon: 'restaurant-outline', tint: '#EC4899' },
+  { label: 'Books & Stationery', icon: 'book-outline', tint: '#0D9488' },
+  { label: 'Sports & Fitness', icon: 'bicycle-outline', tint: '#F59E0B' },
+  { label: 'Automotive', icon: 'car-outline', tint: '#8B5CF6' },
+  { label: 'Beauty & Personal Care', icon: 'flower-outline', tint: '#EC4899' },
+  { label: 'Jewelry & Accessories', icon: 'diamond-outline', tint: '#F59E0B' },
+  { label: 'Hardware & Tools', icon: 'construct-outline', tint: '#6B7280' },
+  { label: 'Pet Supplies', icon: 'paw-outline', tint: '#10B981' },
+  { label: 'Toys & Games', icon: 'game-controller-outline', tint: '#F43F5E' },
+  { label: 'Other', icon: 'ellipsis-horizontal-outline', tint: '#6B7280' },
 ];
 
 const SIDEBAR_WIDTH = 92;
@@ -44,8 +63,10 @@ export default function CategoryScreen({ navigation, route }) {
   const initialCategory = route?.params?.category;
 
   const [allListings, setAllListings] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [allStores, setAllStores] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [activeCategory, setActiveCategory] = useState(null);
+  const [activeTab, setActiveTab] = useState('products');
   const paneAnim = useRef(new Animated.Value(0)).current;
   const cardAnims = useRef(new Map()).current;
   const sidebarItemAnims = useRef(new Map()).current;
@@ -135,20 +156,39 @@ export default function CategoryScreen({ navigation, route }) {
         } catch (e) {
           // ignore
         }
-        const { data, error } = await api.getListings(
+        
+        // Fetch listings
+        const { data: listingsData, error: listingsError } = await api.getListings(
           coords.lat != null && coords.lng != null
             ? { lat: coords.lat, lng: coords.lng }
             : {}
         );
+        
         if (!active) return;
-        if (error) {
-          console.error('Failed to load listings:', error);
+        if (listingsError) {
+          console.error('Failed to load listings:', listingsError);
           setAllListings([]);
         } else {
-          const raw = (data?.listings || []).map(toCardItem).filter(Boolean);
+          const raw = (listingsData?.listings || []).map(toCardItem).filter(Boolean);
           const withDistance = raw.map((it) => attachDistanceToCard(it, coords, user?.id));
           setAllListings(withDistance);
         }
+        
+        // Fetch stores
+        const { data: storesData, error: storesError } = await api.getAllShops(
+          coords.lat != null && coords.lng != null
+            ? { lat: coords.lat, lng: coords.lng }
+            : {}
+        );
+        
+        if (!active) return;
+        if (storesError) {
+          console.error('Failed to load stores:', storesError);
+          setAllStores([]);
+        } else {
+          setAllStores(storesData?.shops || []);
+        }
+        
         setLoading(false);
       })();
       return () => {
@@ -158,45 +198,99 @@ export default function CategoryScreen({ navigation, route }) {
   );
 
   const categories = useMemo(() => {
-    const found = {};
-    for (const it of allListings) {
-      const name = it.category || it.listing?.category;
-      if (name) found[name] = (found[name] || 0) + 1;
-    }
-    const fromListings = Object.keys(found).map((label) => {
-      const preset = DEFAULT_CATEGORIES.find((c) => c.label === label);
-      return {
-        label,
-        icon: preset?.icon || 'pricetag-outline',
-        tint: preset?.tint || '#F59E0B',
-        count: found[label],
-      };
-    });
-    fromListings.sort((a, b) => b.count - a.count);
-    const merged = [...fromListings];
-    for (const preset of DEFAULT_CATEGORIES) {
-      if (!merged.find((c) => c.label === preset.label)) {
-        merged.push({ ...preset, count: 0 });
+    // Always add "All" option at the top
+    const allOption = { 
+      label: 'All', 
+      icon: activeTab === 'products' ? 'grid-outline' : 'storefront-outline', 
+      tint: '#F59E0B',
+      count: activeTab === 'products' ? allListings.length : allStores.length
+    };
+
+    if (activeTab === 'products') {
+      const found = {};
+      for (const it of allListings) {
+        const name = it.category || it.listing?.category;
+        if (name) found[name] = (found[name] || 0) + 1;
       }
+      const fromListings = Object.keys(found).map((label) => {
+        const preset = PRODUCT_CATEGORIES.find((c) => c.label === label);
+        return {
+          label,
+          icon: preset?.icon || 'pricetag-outline',
+          tint: preset?.tint || '#F59E0B',
+          count: found[label],
+        };
+      });
+      fromListings.sort((a, b) => b.count - a.count);
+      const merged = [allOption, ...fromListings];
+      for (const preset of PRODUCT_CATEGORIES) {
+        if (!merged.find((c) => c.label === preset.label)) {
+          merged.push({ ...preset, count: 0 });
+        }
+      }
+      return merged;
+    } else {
+      // Store categories - use business categories from the data
+      const found = {};
+      for (const store of allStores) {
+        const name = store.category;
+        if (name) found[name] = (found[name] || 0) + 1;
+      }
+      const fromStores = Object.keys(found).map((label) => {
+        const preset = BUSINESS_CATEGORIES.find((c) => c.label === label);
+        return {
+          label,
+          icon: preset?.icon || 'storefront-outline',
+          tint: preset?.tint || '#F59E0B',
+          count: found[label],
+        };
+      });
+      fromStores.sort((a, b) => b.count - a.count);
+      const merged = [allOption, ...fromStores];
+      for (const preset of BUSINESS_CATEGORIES) {
+        if (!merged.find((c) => c.label === preset.label)) {
+          merged.push({ ...preset, count: 0 });
+        }
+      }
+      return merged;
     }
-    return merged;
-  }, [allListings]);
+  }, [allListings, allStores, activeTab]);
 
   useEffect(() => {
     if (activeCategory != null) return;
     if (initialCategory && categories.find((c) => c.label === initialCategory)) {
       setActiveCategory(initialCategory);
     } else if (categories.length > 0) {
-      setActiveCategory(categories[0].label);
+      setActiveCategory('All');
     }
   }, [categories, initialCategory, activeCategory]);
 
   const items = useMemo(() => {
     if (!activeCategory) return [];
-    return allListings.filter(
-      (it) => (it.category || it.listing?.category) === activeCategory
-    );
-  }, [allListings, activeCategory]);
+    if (activeTab === 'products') {
+      if (activeCategory === 'All') return allListings;
+      return allListings.filter(
+        (it) => (it.category || it.listing?.category) === activeCategory
+      );
+    } else {
+      if (activeCategory === 'All') return allStores;
+      return allStores.filter(
+        (store) => store.category === activeCategory
+      );
+    }
+  }, [allListings, allStores, activeCategory, activeTab]);
+
+  // Debug logging
+  useEffect(() => {
+    console.log('CategoryScreen Debug:', {
+      activeCategory,
+      activeTab,
+      allListingsLength: allListings.length,
+      allStoresLength: allStores.length,
+      itemsLength: items.length,
+      categoriesLength: categories.length
+    });
+  }, [activeCategory, activeTab, allListings.length, allStores.length, items.length, categories.length]);
 
   const activeMeta = categories.find((c) => c.label === activeCategory);
   const paneWidth = Math.max(windowWidth - SIDEBAR_WIDTH, 160);
@@ -239,40 +333,26 @@ export default function CategoryScreen({ navigation, route }) {
         </Pressable>
       </View>
 
+      <View style={styles.tabsContainer}>
+        <Pressable
+          style={[styles.tab, activeTab === 'products' && styles.tabActive]}
+          onPress={() => setActiveTab('products')}
+        >
+          <Text style={[styles.tabText, activeTab === 'products' && styles.tabTextActive]}>
+            Products
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.tab, activeTab === 'stores' && styles.tabActive]}
+          onPress={() => setActiveTab('stores')}
+        >
+          <Text style={[styles.tabText, activeTab === 'stores' && styles.tabTextActive]}>
+            Sellers & Stores
+          </Text>
+        </Pressable>
+      </View>
+
       <View style={[styles.splitWrap, { backgroundColor: colors.background }]}>
-        {loading ? (
-          <View style={styles.split}>
-            <View style={[styles.sidebar, { backgroundColor: colors.iconBackground }]}>
-              <ScrollView
-                contentContainerStyle={styles.sidebarContent}
-                showsVerticalScrollIndicator={false}
-                nestedScrollEnabled
-              >
-                {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-                  <View key={i} style={styles.sideItem}>
-                    <Skeleton width={36} height={36} borderRadius={12} />
-                    <Skeleton width={40} height={10} borderRadius={4} />
-                    <Skeleton width={20} height={9} borderRadius={4} />
-                  </View>
-                ))}
-              </ScrollView>
-            </View>
-            <View style={styles.itemsPane}>
-              <View style={styles.itemsHeader}>
-                <Skeleton width={100} height={15} borderRadius={4} />
-                <Skeleton width={22} height={20} borderRadius={10} />
-              </View>
-              <View style={styles.itemsGridWrap}>
-                <View style={styles.itemsGrid}>
-                  {[1, 2, 3, 4, 5, 6].map((i) => {
-                    const skeletonCardWidth = Math.floor((Math.max(windowWidth - SIDEBAR_WIDTH, 160) - GRID_PADDING * 2 - GRID_GUTTER) / 2);
-                    return <ProductCardSkeleton key={i} width={skeletonCardWidth} />;
-                  })}
-                </View>
-              </View>
-            </View>
-          </View>
-        ) : (
           <View style={styles.split}>
             <View style={[styles.sidebar, { backgroundColor: colors.iconBackground }]}>
               <ScrollView
@@ -377,134 +457,190 @@ export default function CategoryScreen({ navigation, route }) {
               </View>
 
               {items.length === 0 ? (
-                <ScrollView
-                  contentContainerStyle={styles.itemsEmptyWrap}
-                  showsVerticalScrollIndicator={false}
-                >
-                  <View style={styles.itemsEmpty}>
-                    <Ionicons
-                      name="cube-outline"
-                      size={48}
-                      color={colors.textMuted}
-                    />
-                    <Text style={styles.itemsEmptyTitle}>No items yet</Text>
-                    <Text style={styles.itemsEmptySub}>
-                      Items in this category will appear here.
-                    </Text>
-                  </View>
-                </ScrollView>
+                <EmptyState
+                  compact
+                  icon={activeTab === 'products' ? 'cube-outline' : 'storefront-outline'}
+                  title={activeTab === 'products' ? 'No items yet' : 'No stores yet'}
+                  body={activeTab === 'products' ? 'Nothing in this category right now. Check back after sellers post.' : 'No stores in this category right now.'}
+                />
               ) : (
                 <ScrollView
                   contentContainerStyle={styles.itemsGridWrap}
                   showsVerticalScrollIndicator={false}
                   nestedScrollEnabled
                 >
-                  <View style={styles.itemsGrid}>
-                    {items.map((it) => {
-                      const a = getCardAnim(it.id);
-                      return (
-                        <Animated.View
-                          key={it.id}
-                          style={{
-                            opacity: a,
-                            transform: [
-                              {
-                                translateY: a.interpolate({
-                                  inputRange: [0, 1],
-                                  outputRange: [18, 0],
-                                }),
-                              },
-                              {
-                                scale: a.interpolate({
-                                  inputRange: [0, 1],
-                                  outputRange: [0.94, 1],
-                                }),
-                              },
-                            ],
-                          }}
-                        >
-                          <Pressable
+                  {activeTab === 'products' ? (
+                    <View style={styles.itemsGrid}>
+                      {items.map((it) => {
+                        const a = getCardAnim(it.id);
+                        return (
+                          <Animated.View
+                            key={it.id}
+                            style={{
+                              opacity: a,
+                              transform: [
+                                {
+                                  translateY: a.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [18, 0],
+                                  }),
+                                },
+                                {
+                                  scale: a.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [0.94, 1],
+                                  }),
+                                },
+                              ],
+                            }}
+                          >
+                            <Pressable
+                              style={[
+                                styles.itemCard,
+                                {
+                                  width: cardWidth,
+                                  backgroundColor: colors.surface,
+                                  marginBottom: GRID_GUTTER,
+                                },
+                              ]}
+                              onPress={() => openItem(it)}
+                            >
+                          <View
                             style={[
-                              styles.itemCard,
+                              styles.itemPhoto,
                               {
-                                width: cardWidth,
-                                backgroundColor: colors.surface,
-                                marginBottom: GRID_GUTTER,
+                                height: photoHeight,
+                                backgroundColor: colors.iconBackground,
                               },
                             ]}
-                            onPress={() => openItem(it)}
                           >
-                        <View
-                          style={[
-                            styles.itemPhoto,
-                            {
-                              height: photoHeight,
-                              backgroundColor: colors.iconBackground,
-                            },
-                          ]}
-                        >
-                          {it.photo ? (
-                            <Image
-                              source={{ uri: it.photo }}
-                              style={{ width: '100%', height: '100%' }}
-                              resizeMode="cover"
-                              sharedTransitionTag={`item.${it.id}.photo`}
-                            />
-                          ) : (
-                            <Ionicons
-                              name={it.icon || 'cube-outline'}
-                              size={28}
-                              color={colors.textMuted}
-                              sharedTransitionTag={`item.${it.id}.photo`}
-                            />
-                          )}
-                        </View>
-                        <View style={styles.itemBody}>
-                          <Text numberOfLines={2} style={styles.itemTitle} sharedTransitionTag={`item.${it.id}.title`}>
-                            {it.title}
-                          </Text>
-                          <Text numberOfLines={1} style={styles.itemPrice} sharedTransitionTag={`item.${it.id}.price`}>
-                            {it.price}
-                          </Text>
-                          <View style={styles.itemMeta}>
-                            {it.distanceLabel ? (
-                              <View style={styles.itemMetaItem}>
-                                <Ionicons
-                                  name="navigate"
-                                  size={9}
-                                  color={colors.textMuted}
-                                />
-                                <Text numberOfLines={1} style={styles.itemMetaText}>
-                                  {it.distanceLabel}
-                                </Text>
-                              </View>
-                            ) : null}
-                            {it.views != null && Number(it.views) >= 0 ? (
-                              <View style={styles.itemMetaItem}>
-                                <Ionicons
-                                  name="eye"
-                                  size={9}
-                                  color={colors.textMuted}
-                                />
-                                <Text numberOfLines={1} style={styles.itemMetaText}>
-                                  {it.views >= 1000
-                                    ? `${(it.views / 1000).toFixed(1)}k`
-                                    : it.views}
-                                </Text>
-                              </View>
-                            ) : null}
+                            {it.photo ? (
+                              <Image
+                                source={{ uri: it.photo }}
+                                style={{ width: '100%', height: '100%' }}
+                                resizeMode="cover"
+                                sharedTransitionTag={`item.${it.id}.photo`}
+                              />
+                            ) : (
+                              <Ionicons
+                                name={it.icon || 'cube-outline'}
+                                size={28}
+                                color={colors.textMuted}
+                                sharedTransitionTag={`item.${it.id}.photo`}
+                              />
+                            )}
                           </View>
-                        </View>
-                          </Pressable>
-                        </Animated.View>
-                      );
-                    })}
-                  </View>
+                          <View style={styles.itemBody}>
+                            <Text numberOfLines={2} style={styles.itemTitle} sharedTransitionTag={`item.${it.id}.title`}>
+                              {it.title}
+                            </Text>
+                            <Text numberOfLines={1} style={styles.itemPrice} sharedTransitionTag={`item.${it.id}.price`}>
+                              {it.price}
+                            </Text>
+                            <View style={styles.itemMeta}>
+                              {it.distanceLabel ? (
+                                <View style={styles.itemMetaItem}>
+                                  <Ionicons
+                                    name="navigate"
+                                    size={9}
+                                    color={colors.textMuted}
+                                  />
+                                  <Text numberOfLines={1} style={styles.itemMetaText}>
+                                    {it.distanceLabel}
+                                  </Text>
+                                </View>
+                              ) : null}
+                              {it.views != null && Number(it.views) >= 0 ? (
+                                <View style={styles.itemMetaItem}>
+                                  <Ionicons
+                                    name="eye"
+                                    size={9}
+                                    color={colors.textMuted}
+                                  />
+                                  <Text numberOfLines={1} style={styles.itemMetaText}>
+                                    {it.views >= 1000
+                                      ? `${(it.views / 1000).toFixed(1)}k`
+                                      : it.views}
+                                  </Text>
+                                </View>
+                              ) : null}
+                            </View>
+                          </View>
+                            </Pressable>
+                          </Animated.View>
+                        );
+                      })}
+                    </View>
+                  ) : (
+                    <View style={styles.storesList}>
+                      {items.map((store) => {
+                        const a = getCardAnim(store._id);
+                        return (
+                          <Animated.View
+                            key={store._id}
+                            style={{
+                              opacity: a,
+                              transform: [
+                                {
+                                  translateY: a.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [18, 0],
+                                  }),
+                                },
+                              ],
+                            }}
+                          >
+                            <Pressable
+                              style={styles.storeCard}
+                              onPress={() => navigation.navigate(ROUTES.SELLER_PROFILE, { seller: store })}
+                            >
+                              <View style={styles.storeHeader}>
+                                <View style={styles.storeAvatar}>
+                                  {store.avatarUrl ? (
+                                    <Image
+                                      source={{ uri: store.avatarUrl }}
+                                      style={{ width: '100%', height: '100%' }}
+                                      resizeMode="cover"
+                                    />
+                                  ) : (
+                                    <Ionicons name="storefront" size={24} color={colors.primary} />
+                                  )}
+                                </View>
+                                <View style={styles.storeInfo}>
+                                  <Text style={styles.storeName} numberOfLines={1}>
+                                    {store.name}
+                                  </Text>
+                                  <View style={styles.storeMeta}>
+                                    <View style={styles.storeRating}>
+                                      <Ionicons name="star" size={12} color="#F59E0B" />
+                                      <Text style={styles.storeRatingText}>
+                                        {store.rating?.toFixed(1) || '4.5'}
+                                      </Text>
+                                    </View>
+                                    {store.location && (
+                                      <Text style={styles.storeLocation} numberOfLines={1}>
+                                        {store.location}
+                                      </Text>
+                                    )}
+                                  </View>
+                                </View>
+                                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+                              </View>
+                              {store.description && (
+                                <Text style={styles.storeDescription} numberOfLines={2}>
+                                  {store.description}
+                                </Text>
+                              )}
+                            </Pressable>
+                          </Animated.View>
+                        );
+                      })}
+                    </View>
+                  )}
                 </ScrollView>
               )}
             </Animated.View>
           </View>
-        )}
       </View>
     </SafeAreaView>
   );
@@ -539,6 +675,34 @@ const createStyles = (colors) => ({
     fontWeight: '800',
     color: colors.onGradient,
     textAlign: 'center',
+  },
+  tabsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  tab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  tabActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  tabTextActive: {
+    color: colors.onPrimary,
   },
   splitWrap: {
     flex: 1,
@@ -644,7 +808,64 @@ const createStyles = (colors) => ({
     marginTop: 6,
     fontSize: 15,
     fontWeight: '800',
+  },
+  storesList: {
+    padding: 12,
+    gap: 8,
+  },
+  storeCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  storeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  storeAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.iconBackground,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  storeInfo: {
+    flex: 1,
+  },
+  storeName: {
+    fontSize: 16,
+    fontWeight: '700',
     color: colors.text,
+    marginBottom: 4,
+  },
+  storeMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  storeRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  storeRatingText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  storeLocation: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  storeDescription: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
   },
   itemsEmptySub: {
     fontSize: 12,

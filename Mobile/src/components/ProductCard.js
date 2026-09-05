@@ -68,32 +68,6 @@ const createStyles = (colors) => ({
     justifyContent: 'center',
     zIndex: 2,
   },
-  metaBadges: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    flexDirection: 'column',
-    gap: 4,
-    zIndex: 2,
-  },
-  viewsBadge: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 7,
-    paddingVertical: 4,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    zIndex: 2,
-  },
-  viewsText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#fff',
-  },
   distanceBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -154,28 +128,21 @@ const createStyles = (colors) => ({
     fontSize: 10,
     color: colors.textSecondary,
   },
-  metaRow: {
+  footerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 2,
+    marginTop: 4,
   },
-  smallMeta: {
-    flexDirection: 'row',
+  sellerTypeIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.9)',
     alignItems: 'center',
-    gap: 3,
+    justifyContent: 'center',
   },
-  smallMetaIcon: {
-    fontSize: 10,
-  },
-  smallMetaText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: colors.textMuted,
-  },
-  smallMetaDistance: {
-    color: colors.primary,
-    fontWeight: '700',
+  sellerTypeIconShop: {
+    backgroundColor: 'rgba(99, 102, 241, 0.9)',
   },
 });
 
@@ -194,6 +161,8 @@ const ProductCard = memo(function ProductCard({
   views,
   distanceLabel,
   sharedId,
+  sellerType,
+  shopId,
 }) {
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -303,15 +272,6 @@ const ProductCard = memo(function ProductCard({
               />
             </Pressable>
           </Animated.View>
-
-          {views != null && Number(views) >= 0 && (
-            <View style={styles.viewsBadge}>
-              <Ionicons name="eye" size={10} color="#fff" />
-              <Text style={styles.viewsText}>
-                {views >= 1000 ? `${(views / 1000).toFixed(1)}k` : views}
-              </Text>
-            </View>
-          )}
         </View>
         <View style={styles.body}>
           <Text numberOfLines={1} style={styles.title} sharedTransitionTag={titleTag}>
@@ -334,6 +294,19 @@ const ProductCard = memo(function ProductCard({
               <Text style={styles.location} numberOfLines={1}>{location}</Text>
             </View>
           ) : null}
+
+          <View style={styles.footerRow}>
+            {sellerType === 'shop' && (
+              <View style={[styles.sellerTypeIcon, styles.sellerTypeIconShop]}>
+                <Ionicons name="storefront" size={10} color="#fff" />
+              </View>
+            )}
+            {sellerType === 'individual' && (
+              <View style={styles.sellerTypeIcon}>
+                <Ionicons name="person" size={10} color="#333" />
+              </View>
+            )}
+          </View>
         </View>
       </Pressable>
     </Animated.View>

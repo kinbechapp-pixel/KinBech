@@ -8,8 +8,8 @@ import {
   Text,
   View,
   Dimensions,
-  ActivityIndicator,
   Alert,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +21,7 @@ import {
   navigateToTab,
 } from '../navigation/helpers';
 import { api } from '../services/api';
+import EmptyState from '../components/EmptyState';
 import { formatPrice } from '../utils/listing';
 import { useTheme, useThemedStyles, ThemeStatusBar } from '../theme';
 
@@ -42,6 +43,7 @@ export default function ProfileScreen({ navigation }) {
   const [tab, setTab] = useState('purchases');
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -161,18 +163,7 @@ export default function ProfileScreen({ navigation }) {
       icon: 'log-out-outline',
       tint: resolveColor('colors.menuOrange', colors),
       bg: resolveColor('colors.pastelOrange', colors),
-      onPress: () =>
-        Alert.alert('Logout', 'Are you sure you want to logout?', [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Logout',
-            style: 'destructive',
-            onPress: async () => {
-              await logout();
-              navigation.reset({ index: 0, routes: [{ name: ROUTES.LOGIN }] });
-            },
-          },
-        ]),
+      onPress: () => setShowLogoutModal(true),
     },
   ];
 
@@ -349,35 +340,19 @@ export default function ProfileScreen({ navigation }) {
             </Pressable>
           </View>
 
-          {loading ? (
-            <View style={styles.loadingBox}>
-              <ActivityIndicator color={colors.gradientStart} />
-            </View>
-          ) : activeItems.length === 0 ? (
-            <View style={styles.emptyBox}>
-              <Ionicons
-                name={tab === 'sales' ? 'bag-handle-outline' : 'cart-outline'}
-                size={40}
-                color={colors.textMuted}
-              />
-              <Text style={styles.emptyTitle}>
-                {tab === 'sales' ? 'No sales yet' : 'No purchases yet'}
-              </Text>
-              <Text style={styles.emptySubtitle}>
-                {tab === 'sales'
+          {activeItems.length === 0 ? (
+            <EmptyState
+              compact
+              icon={tab === 'sales' ? 'bag-handle-outline' : 'cart-outline'}
+              title={tab === 'sales' ? 'No sales yet' : 'No purchases yet'}
+              body={
+                tab === 'sales'
                   ? 'Items you sell will appear here.'
-                  : 'Items you buy will appear here.'}
-              </Text>
-              {tab === 'sales' ? (
-                <Pressable
-                  style={styles.emptyCta}
-                  onPress={() => navigation.navigate(ROUTES.POST_LISTING)}
-                >
-                  <Ionicons name="add" size={16} color={colors.onPrimary} />
-                  <Text style={styles.emptyCtaText}>Post a Listing</Text>
-                </Pressable>
-              ) : null}
-            </View>
+                  : 'Items you buy will appear here.'
+              }
+              buttonLabel={tab === 'sales' ? 'Post a listing' : undefined}
+              onButtonPress={tab === 'sales' ? () => navigation.navigate(ROUTES.POST_LISTING) : undefined}
+            />
           ) : (
             <View style={styles.grid}>
               {activeItems.slice(0, 4).map((item) => (
@@ -459,6 +434,46 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.appInfo}>KinBech v1.0.0 · Made with ❤️</Text>
         </View>
       </ScrollView>
+
+      {/* Logout Confirmation Modal */}
+      <Modal
+        visible={showLogoutModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowLogoutModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable 
+            style={styles.modalBackdrop}
+            onPress={() => setShowLogoutModal(false)}
+          />
+          <View style={styles.modalContent}>
+            <View style={styles.modalIconContainer}>
+              <Ionicons name="log-out-outline" size={40} color={colors.danger} />
+            </View>
+            <Text style={styles.modalTitle}>Logout</Text>
+            <Text style={styles.modalMessage}>Are you sure you want to logout? You'll need to login again to access your account.</Text>
+            
+            <View style={styles.modalButtons}>
+              <Pressable
+                style={styles.modalCancelButton}
+                onPress={() => setShowLogoutModal(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={styles.modalLogoutButton}
+                onPress={async () => {
+                  await logout();
+                  navigation.reset({ index: 0, routes: [{ name: ROUTES.LOGIN }] });
+                }}
+              >
+                <Text style={styles.modalLogoutText}>Logout</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -860,5 +875,84 @@ const createStyles = (colors) => ({
     fontSize: 11,
     color: colors.textMuted,
     marginBottom: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  modalContent: {
+    backgroundColor: colors.background,
+    borderRadius: 24,
+    padding: 24,
+    width: '85%',
+    maxWidth: 320,
+    alignItems: 'center',
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 10,
+  },
+  modalIconContainer: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  modalLogoutButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+  },
+  modalLogoutText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.white,
   },
 });

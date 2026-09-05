@@ -75,6 +75,15 @@ export function AuthProvider({ children }) {
           [USER_KEY, JSON.stringify(nextUser)],
         ]);
       },
+      async refreshUser() {
+        const { data, error } = await api.me();
+        if (data?.user && !error) {
+          setUser(data.user);
+          await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
+          return { user: data.user, error: null };
+        }
+        return { user: null, error };
+      },
       async logout() {
         setAuthToken(null);
         setToken(null);

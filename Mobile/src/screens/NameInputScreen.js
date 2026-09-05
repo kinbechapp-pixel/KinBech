@@ -95,7 +95,7 @@ export default function NameInputScreen({ navigation, route }) {
       return;
     }
     await saveSession(data.token, data.user);
-    navigation.replace(ROUTES.PROFILE_SETUP);
+    navigation.replace(ROUTES.SELLER_TYPE_SELECTION);
   };
 
   return (

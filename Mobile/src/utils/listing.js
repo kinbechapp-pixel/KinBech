@@ -137,6 +137,8 @@ export function toCardItem(listing) {
     distanceLabel: formatDistanceLabel(listing.distanceKm),
     coordinates: coords,
     sellerId: seller.id,
+    sellerType: listing.sellerType || 'individual',
+    shopId: listing.shopId || null,
     listing,
   };
 }
@@ -154,6 +156,8 @@ export function toDetailItem(listing) {
     seller: seller.name || 'Seller',
     sellerId: seller.id,
     sellerData: seller,
+    sellerType: listing.sellerType || 'individual',
+    shopId: listing.shopId || null,
     rating: seller.rating ? `${seller.rating}` : 'New seller',
     description: listing.description || '',
     mapAddress: listing.location || '',

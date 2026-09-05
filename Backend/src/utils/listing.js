@@ -7,6 +7,17 @@ function listingPayload(listing, distanceKm) {
     ? publicUser(listing.seller)
     : listing.seller;
 
+  const shop = listing.shopId && listing.shopId._id
+    ? {
+        id: listing.shopId._id,
+        name: listing.shopId.name,
+        logo: listing.shopId.logo,
+        ratingAverage: listing.shopId.ratingAverage,
+        reviewCount: listing.shopId.reviewCount,
+        isVerified: listing.shopId.isVerified,
+      }
+    : listing.shopId;
+
   return {
     id: listing._id,
     title: listing.title,
@@ -22,6 +33,8 @@ function listingPayload(listing, distanceKm) {
     status: listing.status,
     views: Number(listing.views) || 0,
     seller,
+    sellerType: listing.sellerType || 'individual',
+    shopId: shop,
     createdAt: listing.createdAt,
     updatedAt: listing.updatedAt,
     distanceKm:

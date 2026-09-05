@@ -4,7 +4,21 @@ import { useTheme } from '../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-export function Skeleton({ style, width, height, borderRadius }) {
+export function Skeleton({
+  style,
+  width,
+  height,
+  borderRadius,
+  margin,
+  marginHorizontal,
+  marginVertical,
+  marginTop,
+  marginBottom,
+  marginLeft,
+  marginRight,
+  marginStart,
+  marginEnd,
+}) {
   const { colors } = useTheme();
   const opacity = useRef(new Animated.Value(0.3)).current;
 
@@ -36,6 +50,15 @@ export function Skeleton({ style, width, height, borderRadius }) {
           width,
           height,
           opacity,
+          margin,
+          marginHorizontal,
+          marginVertical,
+          marginTop,
+          marginBottom,
+          marginLeft,
+          marginRight,
+          marginStart,
+          marginEnd,
         },
         style,
       ]}

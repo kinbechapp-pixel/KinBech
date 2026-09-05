@@ -1,30 +1,39 @@
 const Review = require('../models/Review');
 const User = require('../models/User');
 const Listing = require('../models/Listing');
+const Shop = require('../models/Shop');
 
 async function createReview(req, res, next) {
   try {
-    const { reviewedUserId, listingId, rating, review, tags } = req.body;
+    const { shopId, listingId, rating, review, tags } = req.body;
 
-    if (!reviewedUserId || !listingId || !rating) {
-      return res.status(400).json({ message: 'Reviewed user ID, listing ID, and rating are required' });
+    if (!shopId || !listingId || !rating) {
+      return res.status(400).json({ message: 'Shop ID, listing ID, and rating are required' });
     }
 
-    if (String(reviewedUserId) === String(req.user._id)) {
-      return res.status(400).json({ message: 'You cannot review yourself' });
+    // Verify shop exists
+    const shop = await Shop.findById(shopId);
+    if (!shop) {
+      return res.status(404).json({ message: 'Shop not found' });
     }
 
-    const reviewedUser = await User.findById(reviewedUserId);
-    if (!reviewedUser) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
+    // Verify listing exists and belongs to the shop
     const listing = await Listing.findById(listingId);
     if (!listing) {
       return res.status(404).json({ message: 'Listing not found' });
     }
 
-    // Check if already reviewed
+    // Critical business rule: Only shop listings can be reviewed
+    if (listing.sellerType !== 'shop' || String(listing.shopId) !== String(shopId)) {
+      return res.status(400).json({ message: 'Reviews are only allowed for shop listings' });
+    }
+
+    // Prevent shop owner from reviewing their own shop
+    if (String(shop.owner) === String(req.user._id)) {
+      return res.status(400).json({ message: 'You cannot review your own shop' });
+    }
+
+    // Check if already reviewed this listing
     const existingReview = await Review.findOne({
       reviewer: req.user._id,
       listing: listingId,
@@ -37,20 +46,21 @@ async function createReview(req, res, next) {
     // Create review
     const newReview = await Review.create({
       reviewer: req.user._id,
-      reviewedUser: reviewedUserId,
+      shopId: shopId,
       listing: listingId,
       rating: Number(rating),
       review: review || '',
       tags: tags || [],
     });
 
-    // Update seller's average rating
-    const allReviews = await Review.find({ reviewedUser, status: 'approved' });
+    // Update shop's average rating
+    const allReviews = await Review.find({ shopId, status: 'approved' });
     const totalRating = allReviews.reduce((sum, r) => sum + r.rating, 0) + rating;
     const avgRating = (totalRating / (allReviews.length + 1)).toFixed(1);
 
-    await User.findByIdAndUpdate(reviewedUserId, {
-      rating: Number(avgRating),
+    await Shop.findByIdAndUpdate(shopId, {
+      ratingAverage: Number(avgRating),
+      reviewCount: allReviews.length + 1,
     });
 
     res.status(201).json({ 
@@ -67,10 +77,10 @@ async function createReview(req, res, next) {
   }
 }
 
-async function getUserReviews(req, res, next) {
+async function getShopReviews(req, res, next) {
   try {
-    const { userId } = req.params;
-    const reviews = await Review.find({ reviewedUser: userId, status: 'approved' })
+    const { shopId } = req.params;
+    const reviews = await Review.find({ shopId, status: 'approved' })
       .populate('reviewer', 'name avatarUrl')
       .populate('listing', 'title photos')
       .sort({ createdAt: -1 })
@@ -82,10 +92,22 @@ async function getUserReviews(req, res, next) {
   }
 }
 
+async function getUserReviews(req, res, next) {
+  try {
+    const { userId } = req.params;
+    // This endpoint is deprecated for individual users - now only works for shops
+    // For backward compatibility, return empty array
+    console.log('getUserReviews called - this endpoint is deprecated for individual users');
+    res.json({ reviews: [] });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function getMyReviews(req, res, next) {
   try {
     const reviews = await Review.find({ reviewer: req.user._id })
-      .populate('reviewedUser', 'name avatarUrl')
+      .populate('shopId', 'name logo')
       .populate('listing', 'title photos')
       .sort({ createdAt: -1 })
       .limit(50);
@@ -98,6 +120,7 @@ async function getMyReviews(req, res, next) {
 
 module.exports = {
   createReview,
+  getShopReviews,
   getUserReviews,
   getMyReviews,
 };

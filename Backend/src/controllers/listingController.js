@@ -1,4 +1,5 @@
 const Listing = require('../models/Listing');
+const Shop = require('../models/Shop');
 const { listingPayload, parsePrice, haversineDistanceKm } = require('../utils/listing');
 
 function buildBaseFilter(req) {
@@ -58,7 +59,8 @@ async function getListings(req, res, next) {
     }
 
     const docs = await Listing.find(filter)
-      .populate('seller', 'name phone avatarUrl rating soldCount boughtCount')
+      .populate('seller', 'name phone avatarUrl soldCount boughtCount')
+      .populate('shopId', 'name logo ratingAverage reviewCount')
       .sort(mongoSort)
       .limit(300)
       .lean();
@@ -206,7 +208,8 @@ async function searchListings(req, res, next) {
 async function getMyListings(req, res, next) {
   try {
     const listings = await Listing.find({ seller: req.user._id })
-      .populate('seller', 'name phone avatarUrl rating soldCount boughtCount')
+      .populate('seller', 'name phone avatarUrl soldCount boughtCount')
+      .populate('shopId', 'name logo ratingAverage reviewCount')
       .sort({ createdAt: -1 });
 
     res.json({ listings: listings.map(listingPayload) });
@@ -221,10 +224,9 @@ async function getListing(req, res, next) {
     const userLat = lat != null && lat !== '' ? Number(lat) : null;
     const userLng = lng != null && lng !== '' ? Number(lng) : null;
 
-    const doc = await Listing.findById(req.params.id).populate(
-      'seller',
-      'name phone avatarUrl rating soldCount boughtCount'
-    );
+    const doc = await Listing.findById(req.params.id)
+      .populate('seller', 'name phone avatarUrl soldCount boughtCount')
+      .populate('shopId', 'name logo ratingAverage reviewCount');
 
     if (!doc) {
       return res.status(404).json({ message: 'Listing not found' });
@@ -278,6 +280,14 @@ async function createListing(req, res, next) {
       location,
       coordinates,
       meetupOption,
+      sellerType = 'individual',
+      shopId,
+      // Shop-specific fields
+      stock,
+      brand,
+      sku,
+      originalPrice,
+      isOnSale,
     } = req.body;
 
     const parsedPrice = parsePrice(price);
@@ -285,8 +295,39 @@ async function createListing(req, res, next) {
       return res.status(400).json({ message: 'Title, price, and category are required' });
     }
 
-    const listing = await Listing.create({
+    // Validate seller type
+    if (!['individual', 'shop'].includes(sellerType)) {
+      return res.status(400).json({ message: 'Invalid seller type' });
+    }
+
+    // If shop listing, validate shopId
+    if (sellerType === 'shop') {
+      if (!shopId) {
+        return res.status(400).json({ message: 'Shop ID is required for shop listings' });
+      }
+
+      const shop = await Shop.findById(shopId);
+      if (!shop) {
+        return res.status(404).json({ message: 'Shop not found' });
+      }
+
+      // Verify user owns the shop
+      if (String(shop.owner) !== String(req.user._id)) {
+        return res.status(403).json({ message: 'You can only create listings for your own shop' });
+      }
+
+      // Use shop location if listing location not provided
+      if (!location && shop.location) {
+        listingData.location = shop.location;
+      }
+      if (!coordinates && shop.coordinates) {
+        listingData.coordinates = shop.coordinates;
+      }
+    }
+
+    const listingData = {
       seller: req.user._id,
+      sellerType,
       title: String(title).trim(),
       description: description || '',
       price: parsedPrice,
@@ -298,9 +339,25 @@ async function createListing(req, res, next) {
         ? { lat: Number(coordinates.lat) || null, lng: Number(coordinates.lng) || null }
         : { lat: null, lng: null },
       meetupOption: meetupOption || 'Public place',
-    });
+    };
 
-    await listing.populate('seller', 'name phone avatarUrl rating soldCount boughtCount');
+    // Add shop-specific fields
+    if (sellerType === 'shop') {
+      listingData.shopId = shopId;
+      listingData.stock = stock || 1;
+      listingData.brand = brand || '';
+      listingData.sku = sku || '';
+      listingData.originalPrice = originalPrice || null;
+      listingData.isOnSale = isOnSale || false;
+    }
+
+    const listing = await Listing.create(listingData);
+
+    await listing.populate('seller', 'name phone avatarUrl soldCount boughtCount');
+    if (listing.shopId) {
+      await listing.populate('shopId', 'name logo ratingAverage reviewCount');
+    }
+
     res.status(201).json({ listing: listingPayload(listing) });
   } catch (error) {
     next(error);
@@ -318,6 +375,14 @@ async function updateListing(req, res, next) {
       return res.status(403).json({ message: 'You can only edit your own listing' });
     }
 
+    // For shop listings, ensure user still owns the shop
+    if (listing.sellerType === 'shop' && listing.shopId) {
+      const shop = await Shop.findById(listing.shopId);
+      if (!shop || String(shop.owner) !== String(req.user._id)) {
+        return res.status(403).json({ message: 'You can only edit listings for your own shop' });
+      }
+    }
+
     const fields = [
       'title',
       'description',
@@ -327,6 +392,12 @@ async function updateListing(req, res, next) {
       'location',
       'meetupOption',
       'status',
+      // Shop-specific fields
+      'stock',
+      'brand',
+      'sku',
+      'originalPrice',
+      'isOnSale',
     ];
 
     fields.forEach((field) => {

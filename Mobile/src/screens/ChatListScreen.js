@@ -3,16 +3,16 @@ import { Pressable, ScrollView, Text, View, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import EmptyState from '../components/EmptyState';
 import { ROUTES } from '../navigation/helpers';
 import { api } from '../services/api';
 import { useTheme, useThemedStyles, ThemeStatusBar } from '../theme';
-import { ChatItemSkeleton } from '../components/SkeletonLoader';
 
 export default function ChatListScreen({ navigation }) {
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
   const [chats, setChats] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   
   // Animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -60,19 +60,14 @@ export default function ChatListScreen({ navigation }) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ThemeStatusBar />
       <Text style={styles.title}>Chats</Text>
-      <ScrollView contentContainerStyle={styles.list}>
-        {loading ? (
-          [1, 2, 3, 4].map((i) => <ChatItemSkeleton key={i} />)
-        ) : chats.length === 0 ? (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconWrap}>
-              <Text style={[styles.sparkle, { top: 4, left: 8 }]}>✦</Text>
-              <Text style={[styles.sparkle, { top: 20, right: 4, fontSize: 10 }]}>✦</Text>
-              <Ionicons name="chatbubble-outline" size={64} color={colors.primary} />
-            </View>
-            <Text style={styles.emptyTitle}>No conversations yet</Text>
-            <Text style={styles.emptySubtitle}>Chat a seller from an item page to start talking</Text>
-          </View>
+      <ScrollView contentContainerStyle={[styles.list, chats.length === 0 && { flexGrow: 1 }]}>
+        {chats.length === 0 ? (
+          <EmptyState
+            compact
+            icon="chatbubbles-outline"
+            title="No conversations yet"
+            body="Open an item and message the seller. Your chats will show up here."
+          />
         ) : (
           <Animated.View style={{ opacity: fadeAnim }}>
             {chats.map((chat) => {

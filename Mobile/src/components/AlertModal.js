@@ -195,11 +195,31 @@ export function AlertModal({
 }
 
 export function showSuccessAlert({ title, message, onConfirm }) {
-  return { type: 'success', title, message, primaryButton: { text: 'OK', onPress: onConfirm } };
+  return { 
+    type: 'success', 
+    title, 
+    message, 
+    primaryButton: { 
+      text: 'OK', 
+      onPress: () => {
+        if (onConfirm) onConfirm();
+      } 
+    } 
+  };
 }
 
 export function showErrorAlert({ title, message, onConfirm }) {
-  return { type: 'error', title, message, primaryButton: { text: 'OK', onPress: onConfirm } };
+  return { 
+    type: 'error', 
+    title, 
+    message, 
+    primaryButton: { 
+      text: 'OK', 
+      onPress: () => {
+        if (onConfirm) onConfirm();
+      } 
+    } 
+  };
 }
 
 export function showWarningAlert({ title, message, onConfirm, onCancel }) {
@@ -207,7 +227,17 @@ export function showWarningAlert({ title, message, onConfirm, onCancel }) {
     type: 'warning',
     title,
     message,
-    primaryButton: { text: 'Continue', onPress: onConfirm },
-    secondaryButton: onCancel ? { text: 'Cancel', onPress: onCancel } : null,
+    primaryButton: { 
+      text: 'Continue', 
+      onPress: () => {
+        if (onConfirm) onConfirm();
+      } 
+    },
+    secondaryButton: onCancel ? { 
+      text: 'Cancel', 
+      onPress: () => {
+        if (onCancel) onCancel();
+      } 
+    } : null,
   };
 }

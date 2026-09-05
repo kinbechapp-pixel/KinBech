@@ -7,9 +7,9 @@ import {
   Text,
   TextInput,
   View,
-  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import EmptyState from '../components/EmptyState';
 import { ROUTES } from '../navigation/helpers';
 import { api } from '../services/api';
 import { useTheme, useThemedStyles, ThemeStatusBar } from '../theme';
@@ -54,8 +54,7 @@ export default function AllCategoriesScreen({ navigation }) {
       if (!active) return;
       setLoading(false);
       if (!error && data?.listings) {
-        // Extract unique categories from listings
-        const uniqueCategories = [...new Set(data.listings.map(l => l.category).filter(Boolean))];
+        // Count items per category
         const categoryCounts = {};
         data.listings.forEach(listing => {
           if (listing.category) {
@@ -63,20 +62,32 @@ export default function AllCategoriesScreen({ navigation }) {
           }
         });
 
-        const dynamicCategories = uniqueCategories.map(category => {
-          const defaultConfig = DEFAULT_CATEGORIES.find(c => c.label === category);
-          return {
-            label: category,
-            icon: defaultConfig?.icon || 'pricetag-outline',
-            colorKey: defaultConfig?.colorKey || 'category.more',
-            iconSet: defaultConfig?.iconSet || 'ionicons',
-            count: categoryCounts[category] || 0,
-            bg: defaultConfig?.colorKey || 'category.more',
-            tint: defaultConfig?.colorKey || 'category.more'
-          };
-        });
+        // Get unique categories from listings that aren't in DEFAULT_CATEGORIES
+        const uniqueCategories = [...new Set(data.listings.map(l => l.category).filter(Boolean))];
+        const extraCategories = uniqueCategories.filter(
+          cat => !DEFAULT_CATEGORIES.some(c => c.label === cat)
+        );
 
-        setCategories(dynamicCategories);
+        // Start with all default categories with their counts
+        const allCategories = DEFAULT_CATEGORIES.map(category => ({
+          ...category,
+          count: categoryCounts[category.label] || 0,
+          bg: `colors.${category.colorKey}`,
+          tint: `colors.${category.colorKey}`
+        }));
+
+        // Add any extra categories from listings
+        const extraWithCounts = extraCategories.map(category => ({
+          label: category,
+          icon: 'pricetag-outline',
+          colorKey: 'category.more',
+          iconSet: 'ionicons',
+          count: categoryCounts[category] || 0,
+          bg: 'colors.category.more',
+          tint: 'colors.category.more'
+        }));
+
+        setCategories([...allCategories, ...extraWithCounts]);
       }
     })();
     return () => {
@@ -128,17 +139,13 @@ export default function AllCategoriesScreen({ navigation }) {
           />
         </View>
 
-        {loading ? (
-          <View style={styles.loadingState}>
-            <ActivityIndicator size="large" color={colors.primary} />
-          </View>
-        ) : filtered.length > 0 ? (
+        {filtered.length > 0 ? (
           <View style={styles.grid}>
             {(filtered || []).map((item) => (
               <Pressable
                 key={item.label}
                 style={styles.card}
-                onPress={() => navigation.navigate(ROUTES.CATEGORY, { category: item.label })}
+                onPress={() => navigation.navigate(ROUTES.EXPLORE, { category: item.label })}
               >
                 <View style={[styles.iconCircle, { backgroundColor: item.bg }]}>
                   {item.iconSet === 'mci' ? (
@@ -155,11 +162,12 @@ export default function AllCategoriesScreen({ navigation }) {
             ))}
           </View>
         ) : (
-          <View style={styles.emptyState}>
-            <Ionicons name="grid-outline" size={48} color={colors.textMuted} />
-            <Text style={styles.emptyTitle}>No categories available</Text>
-            <Text style={styles.emptySubtitle}>Categories will appear here when listings are added</Text>
-          </View>
+          <EmptyState
+            compact
+            icon="grid-outline"
+            title="No categories yet"
+            body="Categories appear here when people start posting listings."
+          />
         )}
       </ScrollView>
     </View>

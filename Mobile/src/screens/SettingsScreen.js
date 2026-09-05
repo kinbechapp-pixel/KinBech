@@ -14,6 +14,7 @@ const ACCOUNT_ROWS = [
   { label: 'Saved Addresses', subtitle: 'Manage your saved locations', icon: 'location-outline', screen: ROUTES.INFO, params: INFO_COPY.Addresses },
   { label: 'Payment Methods', subtitle: 'Manage your payment options', icon: 'card-outline', screen: ROUTES.INFO, params: INFO_COPY.PaymentMethods },
   { label: 'My Listings', subtitle: 'View and manage your posted items', icon: 'list-outline', screen: ROUTES.MY_LISTINGS },
+  { label: 'Seller Preference', subtitle: 'Choose how you want to sell', icon: 'storefront-outline', screen: ROUTES.SELLER_TYPE_SELECTION },
 ];
 
 const SUPPORT_ROWS = [
@@ -162,14 +163,14 @@ export default function SettingsScreen({ navigation }) {
   const styles = useThemedStyles(createStyles);
   const [notifications, setNotifications] = useState(true);
   const [language, setLanguage] = useState('English');
-  const [currency, setCurrency] = useState('INR (₹)');
+  const [currency, setCurrency] = useState('NPR (₨)');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (user?.preferences) {
       setNotifications(user.preferences.notifications ?? true);
       setLanguage(user.preferences.language || 'English');
-      setCurrency(user.preferences.currency || 'INR (₹)');
+      setCurrency(user.preferences.currency || 'NPR (₨)');
     }
   }, [user]);
 

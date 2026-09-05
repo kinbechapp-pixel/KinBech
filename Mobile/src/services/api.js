@@ -321,17 +321,11 @@ export const api = {
   unblockUser: (userId) =>
     request(`/reports/users/${userId}/block`, { method: 'DELETE' }),
   getMyReports: () => request('/reports/my'),
+  getBlockedUsers: () => request('/auth/blocked'),
   createReview: (payload) =>
     request('/reviews', { method: 'POST', body: JSON.stringify(payload) }),
   getUserReviews: (userId) => request(`/reviews/user/${userId}`),
   getMyReviews: () => request('/reviews/my'),
-  createReport: (payload) =>
-    request('/reports', { method: 'POST', body: JSON.stringify(payload) }),
-  blockUser: (userId) =>
-    request(`/reports/users/${userId}/block`, { method: 'POST' }),
-  unblockUser: (userId) =>
-    request(`/reports/users/${userId}/block`, { method: 'DELETE' }),
-  getMyReports: () => request('/reports/my'),
   
   // Seller/Store Discovery APIs
   getSellers: (params = {}) => request(`/sellers${toQuery(params)}`),
@@ -340,6 +334,17 @@ export const api = {
   getFeaturedSellers: (params = {}) => request(`/sellers/featured${toQuery(params)}`),
   getPopularSellers: (params = {}) => request(`/sellers/popular${toQuery(params)}`),
   getNearbySellers: (params = {}) => request(`/sellers/nearby${toQuery(params)}`),
+  
+  // Shop APIs
+  createShop: (payload) =>
+    request('/shops', { method: 'POST', body: JSON.stringify(payload) }),
+  getMyShop: () => request('/shops/mine'),
+  getShopById: (shopId) => request(`/shops/${shopId}`),
+  updateShop: (shopId, payload) =>
+    request(`/shops/${shopId}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  getShopListings: (shopId) => request(`/shops/${shopId}/listings`),
+  getShopReviews: (shopId) => request(`/shops/${shopId}/reviews`),
+  getAllShops: (params = {}) => request(`/shops${toQuery(params)}`),
 };
 
 export default api;

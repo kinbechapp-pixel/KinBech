@@ -2,59 +2,31 @@ import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useFocusEffect } from '@react-navigation/native';
-import { Animated, ActivityIndicator, Alert, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CategoryIcon from '../components/CategoryIcon';
 import FilterBottomSheet from '../components/FilterBottomSheet';
 import ProductCardCarousel from '../components/ProductCardCarousel';
 import SearchBar from '../components/SearchBar';
 import EmptyState from '../components/EmptyState';
-import { Skeleton, ProductCardSkeleton, CategorySkeleton, BannerSkeleton } from '../components/SkeletonLoader';
 import { navigateToTab, openItemDetail, ROUTES, TABS } from '../navigation/helpers';
 import { api } from '../services/api';
 import { attachDistanceToCard, toCardItem } from '../utils/listing';
 import { useTheme, useThemedStyles, ThemeStatusBar } from '../theme';
 import { useAuth } from '../context/AuthContext';
-import { peekCardWidth } from '../components/ProductCard';
 
 const getCategories = (colors, listings = []) => {
   const safeColors = colors || {};
-
-  const availableCategories = [...new Set(listings.map(l => l.category || l.listing?.category).filter(Boolean))];
 
   const categoryConfig = [
     { label: 'Mobiles', icon: 'phone-portrait-outline', color: safeColors.category?.mobiles || '#5B39C6' },
     { label: 'Laptops', icon: 'laptop-outline', color: safeColors.category?.laptops || '#7ED957' },
     { label: 'Electronics', icon: 'headset-outline', color: safeColors.category?.electronics || '#E91E63' },
     { label: 'Furniture', icon: 'file-tray-stacked-outline', color: safeColors.category?.furniture || '#10B981' },
-    { label: 'Vehicles', icon: 'car-outline', color: safeColors.category?.vehicles || '#6366F1' },
-    { label: 'Fashion', icon: 'shirt-outline', color: safeColors.category?.fashion || '#EC4899' },
-    { label: 'Sports & Fitness', icon: 'bicycle-outline', color: safeColors.category?.sports || '#14B8A6' },
+    { label: 'More', icon: 'apps-outline', color: safeColors.category?.more || '#F59E0B', isMore: true },
   ];
 
-  const presentFromConfig = categoryConfig.filter(cat =>
-    availableCategories.includes(cat.label)
-  );
-
-  const extraFromListings = availableCategories
-    .filter(cat => !categoryConfig.some(c => c.label === cat))
-    .map(cat => ({
-      label: cat,
-      icon: 'pricetag-outline',
-      color: safeColors.category?.more || '#F59E0B',
-    }));
-
-  const merged = [...presentFromConfig, ...extraFromListings];
-  const result = merged.slice(0, 5);
-  if (merged.length > 5) {
-    result.push({
-      label: 'More',
-      icon: 'apps-outline',
-      color: safeColors.category?.more || '#F59E0B',
-    });
-  }
-
-  return result;
+  return categoryConfig;
 };
 
 export default function HomeScreen({ navigation }) {
@@ -197,7 +169,7 @@ export default function HomeScreen({ navigation }) {
   );
 
   const openItem = (item) =>
-    openItemDetail(navigation, { listingId: item.id, item: item.listing, sharedId: item.id });
+    navigation.navigate(ROUTES.ITEM_DETAIL, { listingId: item.id });
 
   const toggleSave = async (item) => {
     const { error } = await api.toggleWishlist(item.id);
@@ -300,13 +272,7 @@ export default function HomeScreen({ navigation }) {
           />
         </View>
 
-        {loading ? (
-          <View style={styles.categories}>
-            {[1, 2, 3, 4, 5].map((i) => (
-              <CategorySkeleton key={i} />
-            ))}
-          </View>
-        ) : categories.length > 0 ? (
+        {categories.length > 0 ? (
         <View style={styles.categories}>
           {(categories || []).map((item) => (
             <CategoryIcon
@@ -316,7 +282,7 @@ export default function HomeScreen({ navigation }) {
               color={item.color}
               onPress={() =>
                 navigation.navigate(
-                  item.label === 'More' ? ROUTES.ALL_CATEGORIES : ROUTES.CATEGORY,
+                  item.label === 'More' ? ROUTES.ALL_CATEGORIES : ROUTES.EXPLORE,
                   item.label === 'More' ? undefined : { category: item.label }
                 )
               }
@@ -325,13 +291,7 @@ export default function HomeScreen({ navigation }) {
         </View>
         ) : null}
 
-        {loading ? (
-          <>
-            <SectionSkeleton styles={styles} />
-            <BannerSkeleton />
-            <SectionSkeleton styles={styles} />
-          </>
-        ) : listings.length === 0 ? (
+        {listings.length === 0 ? (
           <EmptyState
             compact
             icon="storefront-outline"
@@ -425,25 +385,6 @@ function Section({ title, onViewAll, items, onPressItem, styles }) {
   );
 }
 
-function SectionSkeleton({ styles }) {
-  const { width } = useWindowDimensions();
-  const cardWidth = peekCardWidth(width);
-  
-  return (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Skeleton width={140} height={20} borderRadius={4} />
-        <Skeleton width={50} height={14} borderRadius={4} />
-      </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}>
-        {[1, 2, 3, 4].map((i) => (
-          <ProductCardSkeleton key={i} width={cardWidth} compact />
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-
 const createStyles = (colors) => ({
   container: {
     flex: 1,
@@ -522,7 +463,7 @@ const createStyles = (colors) => ({
     paddingHorizontal: 8,
     paddingTop: 6,
     paddingBottom: 4,
-    marginTop: 22,
+    marginTop: 8,
     gap: 4,
   },
   section: {

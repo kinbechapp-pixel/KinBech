@@ -6,7 +6,6 @@ export const ROUTES = {
   PROFILE_SETUP: 'ProfileSetup',
   MAIN_TABS: 'MainTabs',
   ALL_CATEGORIES: 'AllCategories',
-  CATEGORY: 'Category',
   EXPLORE: 'Explore',
   SEARCH_RESULTS: 'SearchResults',
   ITEM_DETAIL: 'ItemDetail',
@@ -25,6 +24,19 @@ export const ROUTES = {
   EMPTY_STATE: 'EmptyState',
   INFO: 'Info',
   SELLER_PROFILE: 'SellerProfile',
+  EDIT_PROFILE: 'EditProfile',
+  PRIVACY: 'Privacy',
+  LANGUAGE_SELECT: 'LanguageSelect',
+  CURRENCY_SELECT: 'CurrencySelect',
+  TERMS: 'Terms',
+  PRIVACY_POLICY: 'PrivacyPolicy',
+  // Seller type routes
+  SELLER_TYPE_SELECTION: 'SellerTypeSelection',
+  STORE_CATEGORY_SELECTION: 'StoreCategorySelection',
+  INDIVIDUAL_POST_LISTING: 'IndividualPostListing',
+  SHOP_POST_LISTING: 'ShopPostListing',
+  CREATE_SHOP: 'CreateShop',
+  SHOP_PROFILE: 'ShopProfile',
 };
 
 export const TABS = {
@@ -39,8 +51,10 @@ export function navigateToTab(navigation, screen, params) {
   navigation.navigate(ROUTES.MAIN_TABS, { screen, params });
 }
 
-export function openItemDetail(navigation, params) {
-  navigation.navigate(ROUTES.ITEM_DETAIL, params);
+export function openItemDetail(listingId) {
+  return (navigation) => {
+    navigation.navigate(ROUTES.ITEM_DETAIL, { listingId });
+  };
 }
 
 export const HELP_CATEGORY_COPY = {
@@ -73,11 +87,11 @@ export const INFO_COPY = {
   },
   Addresses: {
     title: 'Saved Addresses',
-    body: 'Save pickup locations to make posting and meetups faster.',
+    body: 'Coming soon — save pickup and delivery locations to make posting and meetups even faster.',
   },
   PaymentMethods: {
     title: 'Payment Methods',
-    body: 'Add wallets and bank details when payments go live.',
+    body: 'Coming soon — connect eSewa, Khalti, IME Pay, Indian wallets, or bank accounts for seamless in-app payments.',
   },
   ContactUs: {
     title: 'Contact Us',

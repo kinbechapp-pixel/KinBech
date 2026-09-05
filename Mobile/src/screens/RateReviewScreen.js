@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTheme, useThemedStyles, ThemeStatusBar } from '../theme';
+import { Ionicons } from '@expo/vector-icons';
 import {
   Text,
   TextInput,
@@ -9,9 +10,8 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import { api } from '../services/api';
 import { AlertModal, showErrorAlert, showSuccessAlert } from '../components/AlertModal';
 
@@ -26,7 +26,8 @@ const MAX_LENGTH = 500;
 export default function RateReviewScreen({ navigation, route }) {
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
-  const { seller, listing } = route.params ?? {};
+  const insets = useSafeAreaInsets();
+  const { seller, listing, shop } = route.params ?? {};
   const [rating, setRating] = useState(4);
   const [review, setReview] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
@@ -38,6 +39,27 @@ export default function RateReviewScreen({ navigation, route }) {
     return null;
   }
 
+  // Check if this is a shop listing - reviews only allowed for shops
+  const isShopListing = listing?.sellerType === 'shop' && listing?.shopId;
+  
+  // If not a shop listing, show error and go back
+  if (!isShopListing) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.content}>
+          <Ionicons name="information-circle" size={64} color={colors.textMuted} />
+          <Text style={styles.errorTitle}>Reviews Not Available</Text>
+          <Text style={styles.errorMessage}>
+            Reviews are only available for shop purchases. Individual seller items cannot be reviewed.
+          </Text>
+          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Text style={styles.backButtonText}>Go Back</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const toggleTag = (key) => {
     setSelectedTags((prev) =>
       prev.includes(key) ? prev.filter((t) => t !== key) : [...prev, key]
@@ -45,10 +67,10 @@ export default function RateReviewScreen({ navigation, route }) {
   };
 
   const handleSubmit = async () => {
-    if (!seller?.id) {
+    if (!listing?.shopId) {
       setAlertConfig(showErrorAlert({
-        title: 'Seller not found',
-        message: 'Unable to submit review for this seller.',
+        title: 'Shop not found',
+        message: 'Unable to submit review for this shop.',
         onConfirm: () => setAlertConfig(null),
       }));
       return;
@@ -57,7 +79,7 @@ export default function RateReviewScreen({ navigation, route }) {
     setLoading(true);
     try {
       const { error } = await api.createReview({
-        reviewedUserId: seller.id,
+        shopId: listing.shopId,
         listingId: listing?.id,
         rating,
         review,
@@ -98,7 +120,7 @@ export default function RateReviewScreen({ navigation, route }) {
         colors={[colors.gradientStart, colors.gradientEnd]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
-        style={styles.header}
+        style={[styles.header, { paddingTop: insets.top + 8 }]}
       >
         <Text style={styles.headerTitle}>Rate Your Experience</Text>
         <Pressable onPress={() => navigation.goBack()} hitSlop={12}>
@@ -107,22 +129,22 @@ export default function RateReviewScreen({ navigation, route }) {
       </LinearGradient>
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.avatarWrap}>
           <View style={styles.avatar}>
-            {seller?.avatarUrl ? (
-              <Image source={{ uri: seller.avatarUrl }} style={{ width: '100%', height: '100%' }} />
+            {shop?.logo ? (
+              <Image source={{ uri: shop.logo }} style={{ width: '100%', height: '100%' }} />
             ) : (
               <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="person" size={44} color={colors.text} />
+                <Ionicons name="storefront" size={44} color={colors.text} />
               </View>
             )}
           </View>
         </View>
-        <Text style={styles.sellerName}>{seller?.name ?? 'Seller'}</Text>
-        <Text style={styles.sellerRole}>Seller</Text>
+        <Text style={styles.sellerName}>{shop?.name ?? 'Shop'}</Text>
+        <Text style={styles.sellerRole}>Shop</Text>
 
         <View style={styles.listingCard}>
           <View style={styles.listingImage}>
@@ -231,6 +253,38 @@ const createStyles = (colors) => ({
     flex: 1,
     backgroundColor: colors.background,
   },
+  content: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  backButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.onPrimary,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -247,7 +301,7 @@ const createStyles = (colors) => ({
     fontWeight: '800',
     color: colors.white,
   },
-  content: {
+  scrollContent: {
     padding: 20,
     alignItems: 'center',
   },

@@ -9,7 +9,7 @@ import {
   Platform,
   UIManager,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { HELP_CATEGORY_COPY, INFO_COPY, ROUTES } from '../navigation/helpers';
@@ -93,6 +93,7 @@ const POPULAR_ARTICLES = [
 export default function HelpSupportScreen({ navigation }) {
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
+  const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
   const [expandedFaq, setExpandedFaq] = useState(null);
 
@@ -122,11 +123,12 @@ export default function HelpSupportScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <ThemeStatusBar variant="header" />
       <LinearGradient
         colors={[colors.gradientStart, colors.gradientEnd]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
-        style={styles.header}
+        style={[styles.header, { paddingTop: insets.top + 8 }]}
       >
         <Pressable onPress={() => navigation.goBack()} hitSlop={12}>
           <Ionicons name="arrow-back" size={24} color={colors.white} />
@@ -278,8 +280,8 @@ const createStyles = (colors) => ({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 16,
     paddingHorizontal: 16,
+    paddingBottom: 18,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },

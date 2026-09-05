@@ -1,5 +1,6 @@
 const Listing = require('../models/Listing');
 const Shop = require('../models/Shop');
+const Report = require('../models/Report');
 const { listingPayload, parsePrice, haversineDistanceKm } = require('../utils/listing');
 
 function buildBaseFilter(req) {
@@ -450,6 +451,66 @@ async function deleteListing(req, res, next) {
   }
 }
 
+async function getAllListingsAdmin(req, res, next) {
+  try {
+    const { status } = req.query;
+    const filter = {};
+
+    if (status && status !== 'all') {
+      filter.status = status;
+    }
+
+    const listings = await Listing.find(filter)
+      .populate('seller', 'name phone avatarUrl')
+      .populate('shopId', 'name logo')
+      .sort({ createdAt: -1 })
+      .limit(100);
+
+    // Add report counts
+    const listingIds = listings.map(l => l._id);
+    const reportCounts = await Report.aggregate([
+      { $match: { reportedListing: { $in: listingIds } } },
+      { $group: { _id: '$reportedListing', count: { $sum: 1 } } }
+    ]);
+
+    const reportCountMap = {};
+    reportCounts.forEach(item => {
+      reportCountMap[item._id.toString()] = item.count;
+    });
+
+    const listingsWithReports = listings.map(listing => ({
+      ...listingPayload(listing),
+      reportsCount: reportCountMap[listing._id.toString()] || 0
+    }));
+
+    res.json({ listings: listingsWithReports });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function updateListingStatusAdmin(req, res, next) {
+  try {
+    const { listingId } = req.params;
+    const { status } = req.body;
+
+    const listing = await Listing.findById(listingId);
+    if (!listing) {
+      return res.status(404).json({ message: 'Listing not found' });
+    }
+
+    listing.status = status || listing.status;
+    await listing.save();
+
+    res.json({ 
+      message: 'Listing status updated successfully',
+      listing: listingPayload(listing)
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getListings,
   searchListings,
@@ -459,4 +520,6 @@ module.exports = {
   createListing,
   updateListing,
   deleteListing,
+  getAllListingsAdmin,
+  updateListingStatusAdmin,
 };

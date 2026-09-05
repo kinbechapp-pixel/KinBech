@@ -77,6 +77,16 @@ KinBech इन सभी problems को solve करता है by focusing o
 - **Offline Support:** Basic functionality without internet
 - **Push Notifications:** Real-time updates for chats and offers
 
+### 🔧 Admin Panel
+- **Dashboard:** Real-time statistics and activity monitoring
+- **User Management:** View, verify, suspend, and manage user accounts
+- **Shop Management:** Approve/reject shop verifications, manage business profiles
+- **Listing Management:** Monitor, approve, and remove listings
+- **Review Moderation:** Flag and manage inappropriate reviews
+- **Report Handling:** Review and take action on user reports
+- **Notification System:** Send broadcast notifications to users
+- **Settings Management:** Configure platform settings and admin roles
+
 ---
 
 ## 🏗️ Technology Stack
@@ -189,6 +199,28 @@ Mobile/
 │       └── apiUrl.js
 ```
 
+### Admin Panel Structure
+```
+Admin/
+├── src/
+│   ├── pages/                    # Admin page components
+│   │   ├── Dashboard.jsx
+│   │   ├── Shops.jsx
+│   │   ├── Listings.jsx
+│   │   ├── Users.jsx
+│   │   ├── Reviews.jsx
+│   │   ├── Reports.jsx
+│   │   ├── Notifications.jsx
+│   │   ├── Settings.jsx
+│   │   └── Login.jsx
+│   ├── components/              # Reusable components
+│   ├── services/                 # API integration
+│   │   └── api.js
+│   ├── context/                  # State management
+│   ├── theme/                    # Theme configuration
+│   └── utils/                    # Utility functions
+```
+
 ### Backend Structure
 ```
 Backend/
@@ -232,6 +264,16 @@ Backend/
 │       ├── listing.js
 │       ├── phone.js
 │       └── token.js
+```
+
+### Root Project Structure
+```
+KinBech/
+├── package.json                 # Root package.json for running all services
+├── Backend/                     # Backend API server
+├── Admin/                       # Admin panel (React + Vite)
+├── Mobile/                      # Mobile app (React Native + Expo)
+└── PROJECT_REPORT.md            # This file
 ```
 
 ---
@@ -342,6 +384,44 @@ Backend/
 - **Mobile:** Expo Go for real-time testing
 - **Backend:** Local Node.js server on port 5001
 - **Database:** Local MongoDB instance
+- **Admin Panel:** React + Vite dev server on port 5173
+
+### Running the Project
+
+#### Quick Start (Run All Services)
+```bash
+# Install root dependencies
+npm install
+
+# Development mode (Backend + Admin Panel)
+npm run dev
+
+# Production mode
+npm start
+```
+
+#### Individual Services
+```bash
+# Backend only
+cd Backend
+npm run dev        # Development with nodemon
+npm start          # Production
+
+# Admin Panel only
+cd Admin
+npm run dev        # Development with Vite
+npm run build      # Build for production
+npm run preview    # Preview production build
+
+# Mobile App only
+cd Mobile
+npm start          # Start Expo development server
+```
+
+#### Service URLs
+- **Backend API:** http://localhost:5001
+- **Admin Panel:** http://localhost:5173 (dev)
+- **Mobile App:** Expo Go app scanning QR code
 
 ### Production Deployment Options
 - **Mobile App:** 
@@ -404,6 +484,21 @@ Backend/
 - **Phase 7:** UI polish and optimization (1 week)
 
 ---
+
+## ⚠️ Current Development Notes
+
+### Admin Panel Status
+The Admin Panel UI is complete but **not yet connected to the backend API**. Currently using mock data:
+- Dashboard: Statistics and activity data
+- Shops: Shop management and verification
+- Listings: Listing moderation and management  
+- Users: User account management
+- Reviews: Review moderation
+- Reports: Report handling system
+- Notifications: Broadcast notification system
+- Settings: Platform configuration
+
+**Next Steps:** Need to implement admin-specific API endpoints in the backend and connect them to the admin panel.
 
 ## 🎯 Future Enhancements
 

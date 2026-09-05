@@ -280,12 +280,13 @@ export default function HomeScreen({ navigation }) {
               label={item.label}
               icon={item.icon}
               color={item.color}
-              onPress={() =>
-                navigation.navigate(
-                  item.label === 'More' ? ROUTES.ALL_CATEGORIES : ROUTES.EXPLORE,
-                  item.label === 'More' ? undefined : { category: item.label }
-                )
-              }
+              onPress={() => {
+                if (item.label === 'More') {
+                  navigation.navigate(ROUTES.ALL_CATEGORIES);
+                } else {
+                  navigation.navigate(ROUTES.MAIN_TABS, { screen: ROUTES.EXPLORE, params: { category: item.label } });
+                }
+              }}
             />
           ))}
         </View>

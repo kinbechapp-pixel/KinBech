@@ -396,58 +396,40 @@ const createStyles = (colors) => ({
   searchContent: {
     flex: 1,
   },
-  splitWrap: {
-    flex: 1,
+  categoriesSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  categoriesScroll: {
+    gap: 8,
+  },
+  categoryChip: {
     flexDirection: 'row',
-  },
-  sidebar: {
-    width: SIDEBAR_WIDTH,
-    backgroundColor: colors.iconBackground,
-    borderRightWidth: 1,
-    borderRightColor: colors.border,
-  },
-  sidebarContent: {
-    paddingTop: 0,
-    paddingBottom: 24,
-  },
-  sideItem: {
-    position: 'relative',
-    flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    gap: 4,
-    minHeight: 90,
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  sideIndicator: {
-    position: 'absolute',
-    left: 0,
-    top: 12,
-    bottom: 12,
-    width: 3,
-    borderTopRightRadius: 3,
-    borderBottomRightRadius: 3,
+  categoryChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
-  sideIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+  categoryIcon: {
+    marginRight: 4,
   },
-  sideLabel: {
-    fontSize: 10,
+  categoryText: {
+    fontSize: 13,
     fontWeight: '600',
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 12,
+    color: colors.text,
   },
-  sideCount: {
-    fontSize: 9,
-    color: colors.textMuted,
-    fontWeight: '500',
-    textAlign: 'center',
+  categoryTextActive: {
+    color: colors.onPrimary,
   },
   mainContent: {
     flex: 1,
@@ -1012,88 +994,66 @@ export default function ExploreScreen({ navigation, route }) {
   }
 
   return (
-    <View style={styles.container}>
-      <ThemeStatusBar variant="header" />
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.exploreTitle}>Explore</Text>
-            <Text style={styles.exploreSubtitle}>Find trusted sellers & stores near you</Text>
+    <>
+      <View style={styles.container}>
+        <ThemeStatusBar variant="header" />
+        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+          <View style={styles.headerTop}>
+            <View>
+              <Text style={styles.exploreTitle}>Explore</Text>
+              <Text style={styles.exploreSubtitle}>Find trusted sellers & stores near you</Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      <View style={styles.searchWrap}>
-        <SearchBar
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Search sellers, stores or products..."
-        />
-      </View>
-
-      <View style={styles.splitWrap}>
-        {/* Sidebar Categories */}
-        <View style={styles.sidebar}>
-          <ScrollView
-            contentContainerStyle={styles.sidebarContent}
-            showsVerticalScrollIndicator={false}
-            nestedScrollEnabled
-          >
-            {categories.map((cat) => {
-              const isActive = cat.label === activeCategory;
-              return (
-                <Pressable
-                  key={cat.label}
-                  style={[
-                    styles.sideItem,
-                    isActive && { backgroundColor: colors.background },
-                  ]}
-                  onPress={() => setActiveCategory(cat.label)}
-                >
-                  {isActive && (
-                    <View
-                      style={[styles.sideIndicator, { backgroundColor: colors.primary }]}
-                    />
-                  )}
-                  <View
-                    style={[
-                      styles.sideIcon,
-                      {
-                        backgroundColor: isActive
-                          ? `${cat.tint}1F`
-                          : colors.surface,
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name={cat.icon}
-                      size={18}
-                      color={isActive ? cat.tint : colors.textMuted}
-                    />
-                  </View>
-                  <Text
-                    numberOfLines={2}
-                    style={[
-                      styles.sideLabel,
-                      isActive && {
-                        color: colors.text,
-                        fontWeight: '800',
-                      },
-                    ]}
-                  >
-                    {cat.label}
-                  </Text>
-                  <Text style={styles.sideCount}>
-                    {cat.count || 0}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+        <View style={styles.searchWrap}>
+          <SearchBar
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search sellers, stores or products..."
+          />
         </View>
 
-        {/* Main Content */}
-        <ScrollView style={styles.mainContent} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollViewContent}>
+      {/* Horizontal Categories Scroll */}
+      <View style={styles.categoriesSection}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoriesScroll}
+        >
+          {categories.map((cat) => {
+            const isActive = cat.label === activeCategory;
+            return (
+              <Pressable
+                key={cat.label}
+                style={[
+                  styles.categoryChip,
+                  isActive && styles.categoryChipActive,
+                ]}
+                onPress={() => setActiveCategory(cat.label)}
+              >
+                <Ionicons
+                  name={cat.icon}
+                  size={16}
+                  color={isActive ? colors.primary : colors.textMuted}
+                  style={styles.categoryIcon}
+                />
+                <Text
+                  style={[
+                    styles.categoryText,
+                    isActive && styles.categoryTextActive,
+                  ]}
+                >
+                  {cat.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Main Content */}
+      <ScrollView style={styles.mainContent} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollViewContent}>
           {/* Products/Sellers Tabs */}
           <View style={styles.mainTabs}>
             <View style={styles.tabsContainer}>
@@ -1204,8 +1164,8 @@ export default function ExploreScreen({ navigation, route }) {
                   </View>
                 </>
               ) : (
-              <>
-                {/* Sellers & Stores Tab Content */}
+                <>
+                  {/* Sellers & Stores Tab Content */}
                 {/* Pinned Stores Section - Only show when there are pinned stores */}
                 {pinnedStores.length > 0 && (
                   <View style={styles.pinnedSection}>
@@ -1308,16 +1268,16 @@ export default function ExploreScreen({ navigation, route }) {
                     </ScrollView>
                   ) : (
                     <EmptyState
-                  icon="flame-outline"
-                  title="No popular sellers available"
-                  body="Make sure your backend server is running on port 5001."
-                  compact
-                />
-              )}
-            </View>
+                      icon="flame-outline"
+                      title="No popular sellers available"
+                      body="Make sure your backend server is running on port 5001."
+                      compact
+                    />
+                  )}
+                </View>
 
-            {/* Nearby Sellers Section */}
-            <View style={styles.nearbySection}>
+                {/* Nearby Sellers Section */}
+                <View style={styles.nearbySection}>
               <View style={styles.sectionHeader}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Ionicons name="location" size={20} color={colors.primary} style={styles.sectionIcon} />
@@ -1355,91 +1315,91 @@ export default function ExploreScreen({ navigation, route }) {
                 />
               )}
             </View>
-              </>
-            )}
-          </Animated.View>
+          </>
         )}
-        </ScrollView>
-      </View>
+      </Animated.View>
+    )}
+  </ScrollView>
 
-      {/* Filter Modal */}
-      <Modal
-        visible={showFilterModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowFilterModal(false)}
-      >
-        <View style={styles.filterModal}>
-          <Pressable 
-            style={{ flex: 1 }} 
+  {/* Filter Modal */}
+  <Modal
+    visible={showFilterModal}
+    transparent={true}
+    animationType="slide"
+    onRequestClose={() => setShowFilterModal(false)}
+  >
+    <View style={styles.filterModal}>
+    <View style={styles.filterModal}>
+      <Pressable
+        style={{ flex: 1 }}
+        onPress={() => setShowFilterModal(false)}
+      />
+      <View style={styles.filterModalContent}>
+        <View style={styles.filterModalHeader}>
+          <Text style={styles.filterModalTitle}>Filters</Text>
+          <Pressable
+            style={styles.filterCloseButton}
             onPress={() => setShowFilterModal(false)}
-          />
-          <View style={styles.filterModalContent}>
-            <View style={styles.filterModalHeader}>
-              <Text style={styles.filterModalTitle}>Filters</Text>
-              <Pressable 
-                style={styles.filterCloseButton}
-                onPress={() => setShowFilterModal(false)}
-              >
-                <Ionicons name="close" size={24} color={colors.text} />
-              </Pressable>
-            </View>
-
-            <View style={styles.filterSection}>
-              <Text style={styles.filterSectionTitle}>Filter Options</Text>
-              
-              <Pressable 
-                style={styles.filterOption}
-                onPress={() => setSelectedFilters(prev => ({ ...prev, verified: !prev.verified }))}
-              >
-                <View style={[
-                  styles.filterCheckbox, 
-                  selectedFilters.verified && styles.filterCheckboxChecked
-                ]}>
-                  {selectedFilters.verified && <View style={styles.filterCheckboxInner} />}
-                </View>
-                <Text style={styles.filterOptionText}>Verified Sellers Only</Text>
-              </Pressable>
-
-              <Pressable 
-                style={styles.filterOption}
-                onPress={() => setSelectedFilters(prev => ({ ...prev, nearby: !prev.nearby }))}
-              >
-                <View style={[
-                  styles.filterCheckbox, 
-                  selectedFilters.nearby && styles.filterCheckboxChecked
-                ]}>
-                  {selectedFilters.nearby && <View style={styles.filterCheckboxInner} />}
-                </View>
-                <Text style={styles.filterOptionText}>Nearby First</Text>
-              </Pressable>
-
-              <Pressable 
-                style={styles.filterOption}
-                onPress={() => setSelectedFilters(prev => ({ ...prev, topRated: !prev.topRated }))}
-              >
-                <View style={[
-                  styles.filterCheckbox, 
-                  selectedFilters.topRated && styles.filterCheckboxChecked
-                ]}>
-                  {selectedFilters.topRated && <View style={styles.filterCheckboxInner} />}
-                </View>
-                <Text style={styles.filterOptionText}>Top Rated</Text>
-              </Pressable>
-            </View>
-
-            <Pressable 
-              style={styles.applyButton}
-              onPress={() => {
-                console.log('Applied filters:', selectedFilters);
-                setShowFilterModal(false);
-              }}
-            >
-              <Text style={styles.applyButtonText}>Apply Filters</Text>
-            </Pressable>
-          </View>
+          >
+            <Ionicons name="close" size={24} color={colors.text} />
+          </Pressable>
         </View>
-      </Modal>
+
+        <View style={styles.filterSection}>
+          <Text style={styles.filterSectionTitle}>Filter Options</Text>
+
+          <Pressable
+            style={styles.filterOption}
+            onPress={() => setSelectedFilters(prev => ({ ...prev, verified: !prev.verified }))}
+          >
+            <View style={[
+              styles.filterCheckbox,
+              selectedFilters.verified && styles.filterCheckboxChecked
+            ]}>
+              {selectedFilters.verified && <View style={styles.filterCheckboxInner} />}
+            </View>
+            <Text style={styles.filterOptionText}>Verified Sellers Only</Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.filterOption}
+            onPress={() => setSelectedFilters(prev => ({ ...prev, nearby: !prev.nearby }))}
+          >
+            <View style={[
+              styles.filterCheckbox,
+              selectedFilters.nearby && styles.filterCheckboxChecked
+            ]}>
+              {selectedFilters.nearby && <View style={styles.filterCheckboxInner} />}
+            </View>
+            <Text style={styles.filterOptionText}>Nearby First</Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.filterOption}
+            onPress={() => setSelectedFilters(prev => ({ ...prev, topRated: !prev.topRated }))}
+          >
+            <View style={[
+              styles.filterCheckbox,
+              selectedFilters.topRated && styles.filterCheckboxChecked
+            ]}>
+              {selectedFilters.topRated && <View style={styles.filterCheckboxInner} />}
+            </View>
+            <Text style={styles.filterOptionText}>Top Rated</Text>
+          </Pressable>
+        </View>
+
+        <Pressable
+          style={styles.applyButton}
+          onPress={() => {
+            console.log('Applied filters:', selectedFilters);
+            setShowFilterModal(false);
+          }}
+        >
+          <Text style={styles.applyButtonText}>Apply Filters</Text>
+        </Pressable>
+      </View>
     </View>
+  </Modal>
+    </>
   );
 }

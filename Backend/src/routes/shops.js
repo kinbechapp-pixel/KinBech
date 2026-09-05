@@ -6,9 +6,11 @@ const {
   updateShop, 
   getShopListings, 
   getShopReviews,
-  getAllShops 
+  getAllShops,
+  updateShopStatus,
+  getAllShopsAdmin
 } = require('../controllers/shopController');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireAdmin } = require('../middleware/auth');
 
 const router = Router();
 
@@ -22,5 +24,9 @@ router.get('/', getAllShops);
 router.get('/:shopId', getShopById);
 router.get('/:shopId/listings', getShopListings);
 router.get('/:shopId/reviews', getShopReviews);
+
+// Admin routes
+router.get('/admin/all', requireAdmin, getAllShopsAdmin);
+router.patch('/admin/:shopId/status', requireAdmin, updateShopStatus);
 
 module.exports = router;

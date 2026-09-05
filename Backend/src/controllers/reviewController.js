@@ -118,9 +118,75 @@ async function getMyReviews(req, res, next) {
   }
 }
 
+async function getAllReviews(req, res, next) {
+  try {
+    const { status } = req.query;
+    const filter = {};
+    
+    if (status) {
+      filter.status = status;
+    }
+
+    const reviews = await Review.find(filter)
+      .populate('reviewer', 'name avatarUrl')
+      .populate('shopId', 'name logo')
+      .populate('listing', 'title photos')
+      .sort({ createdAt: -1 })
+      .limit(100);
+
+    res.json({ reviews });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function updateReviewStatus(req, res, next) {
+  try {
+    const { reviewId } = req.params;
+    const { status } = req.body;
+
+    const review = await Review.findById(reviewId);
+    if (!review) {
+      return res.status(404).json({ message: 'Review not found' });
+    }
+
+    const oldStatus = review.status;
+    review.status = status || review.status;
+
+    await review.save();
+
+    // Update shop rating if status changed to/from approved
+    if (oldStatus !== review.status && review.shopId) {
+      const allReviews = await Review.find({ 
+        shopId: review.shopId, 
+        status: 'approved' 
+      });
+      
+      const totalRating = allReviews.reduce((sum, r) => sum + r.rating, 0);
+      const avgRating = allReviews.length > 0 
+        ? (totalRating / allReviews.length).toFixed(1)
+        : 0;
+
+      await Shop.findByIdAndUpdate(review.shopId, {
+        ratingAverage: Number(avgRating),
+        reviewCount: allReviews.length,
+      });
+    }
+
+    res.json({ 
+      message: 'Review status updated successfully',
+      review
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   createReview,
   getShopReviews,
   getUserReviews,
   getMyReviews,
+  getAllReviews,
+  updateReviewStatus,
 };

@@ -2,10 +2,11 @@ const mongoose = require('mongoose');
 
 const notificationSchema = new mongoose.Schema(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    type: { type: String, enum: ['listing', 'chat', 'system', 'promotion'], default: 'system' },
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
+    type: { type: String, enum: ['listing', 'chat', 'system', 'promotion', 'broadcast'], default: 'system' },
     title: { type: String, required: true },
-    body: { type: String, required: true },
+    body: { type: String },
+    message: { type: String }, // Alternative to body for broadcast notifications
     icon: { type: String, default: 'notifications-outline' },
     iconBg: { type: String, default: 'iconBackground' },
     unread: { type: Boolean, default: true },
@@ -14,8 +15,20 @@ const notificationSchema = new mongoose.Schema(
     tab: { type: String },
     relatedListing: { type: mongoose.Schema.Types.ObjectId, ref: 'Listing' },
     relatedChat: { type: mongoose.Schema.Types.ObjectId, ref: 'Chat' },
+    // Broadcast notification fields
+    sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    audience: { type: String, enum: ['all', 'buyers', 'individual_sellers', 'shop_sellers', 'specific_city'], default: 'all' },
+    deliveryMethod: { type: String, enum: ['push', 'banner', 'both'], default: 'both' },
   },
   { timestamps: true, collection: 'notifications' }
 );
+
+// Make body required only for non-broadcast notifications
+notificationSchema.pre('save', function(next) {
+  if (this.type !== 'broadcast' && !this.body) {
+    this.body = this.message || '';
+  }
+  next();
+});
 
 module.exports = mongoose.model('Notification', notificationSchema);

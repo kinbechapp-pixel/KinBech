@@ -1,16 +1,28 @@
 const { Router } = require('express');
-const { signup, login, verifyOtp, me, updateMe, completeSignup, updatePreferences, getBlockedUsers } = require('../controllers/authController');
-const { requireAuth } = require('../middleware/auth');
+const { signup, login, verifyOtp, me, updateMe, completeSignup, updatePreferences, getBlockedUsers, adminLogin, getAllAdmins, createAdmin, deleteAdmin, getDashboardStats, getAllUsers, updateUserStatus } = require('../controllers/authController');
+const { requireAuth, requireAdmin } = require('../middleware/auth');
 
 const router = Router();
 
+// Public routes
 router.post('/signup', signup);
 router.post('/login', login);
+router.post('/admin/login', adminLogin);
 router.post('/otp', verifyOtp);
 router.post('/complete-signup', completeSignup);
+
+// Protected routes
 router.get('/me', requireAuth, me);
 router.patch('/me', requireAuth, updateMe);
 router.patch('/preferences', requireAuth, updatePreferences);
 router.get('/blocked', requireAuth, getBlockedUsers);
+
+// Admin routes
+router.get('/admin/all', requireAdmin, getAllAdmins);
+router.post('/admin/create', requireAdmin, createAdmin);
+router.delete('/admin/:adminId', requireAdmin, deleteAdmin);
+router.get('/admin/dashboard-stats', requireAdmin, getDashboardStats);
+router.get('/admin/users', requireAdmin, getAllUsers);
+router.patch('/admin/users/:userId/status', requireAdmin, updateUserStatus);
 
 module.exports = router;

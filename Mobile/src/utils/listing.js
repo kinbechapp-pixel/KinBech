@@ -123,6 +123,7 @@ export function toCardItem(listing) {
   if (!listing) return null;
   const coords = resolveListingCoords(listing);
   const seller = listing.seller || {};
+  const shop = listing.shopId || {};
   return {
     id: listing.id,
     title: listing.title,
@@ -139,6 +140,7 @@ export function toCardItem(listing) {
     sellerId: seller.id,
     sellerType: listing.sellerType || 'individual',
     shopId: listing.shopId || null,
+    sellerName: listing.sellerType === 'shop' ? (shop.name || 'Shop') : (seller.name || 'Seller'),
     listing,
   };
 }

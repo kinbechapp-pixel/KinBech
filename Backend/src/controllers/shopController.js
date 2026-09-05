@@ -197,6 +197,74 @@ async function getAllShops(req, res, next) {
   }
 }
 
+async function updateShopStatus(req, res, next) {
+  try {
+    const { shopId } = req.params;
+    const { status, isVerified } = req.body;
+
+    const shop = await Shop.findById(shopId);
+    if (!shop) {
+      return res.status(404).json({ message: 'Shop not found' });
+    }
+
+    if (status !== undefined) {
+      shop.status = status;
+    }
+    if (isVerified !== undefined) {
+      shop.isVerified = isVerified;
+    }
+
+    await shop.save();
+
+    res.json({ 
+      message: 'Shop status updated successfully',
+      shop
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getAllShopsAdmin(req, res, next) {
+  try {
+    const { status, isVerified } = req.query;
+    const filter = {};
+
+    if (status) {
+      filter.status = status;
+    }
+    if (isVerified !== undefined) {
+      filter.isVerified = isVerified === 'true';
+    }
+
+    const shops = await Shop.find(filter)
+      .populate('owner', 'name avatarUrl phone')
+      .sort({ createdAt: -1 })
+      .limit(100);
+
+    // Add listing counts
+    const shopIds = shops.map(s => s._id);
+    const listingCounts = await Listing.aggregate([
+      { $match: { shopId: { $in: shopIds }, status: 'active' } },
+      { $group: { _id: '$shopId', count: { $sum: 1 } } }
+    ]);
+
+    const listingCountMap = {};
+    listingCounts.forEach(item => {
+      listingCountMap[item._id.toString()] = item.count;
+    });
+
+    const shopsWithCounts = shops.map(shop => ({
+      ...shop.toObject(),
+      listingsCount: listingCountMap[shop._id.toString()] || 0
+    }));
+
+    res.json({ shops: shopsWithCounts });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   createShop,
   getMyShop,
@@ -204,5 +272,7 @@ module.exports = {
   updateShop,
   getShopListings,
   getShopReviews,
-  getAllShops
+  getAllShops,
+  updateShopStatus,
+  getAllShopsAdmin
 };

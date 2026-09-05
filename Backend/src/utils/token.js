@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 
 function signUserToken(user) {
   return jwt.sign(
-    { userId: user._id.toString(), phone: user.phone },
+    { userId: user._id.toString(), phone: user.phone, role: user.role || 'user' },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
@@ -17,6 +17,8 @@ function publicUser(user) {
     id: user._id.toString(),
     name: user.name,
     phone: user.phone,
+    email: user.email || '',
+    role: user.role || 'user',
     avatarUrl: user.avatarUrl,
     soldCount: user.soldCount,
     boughtCount: user.boughtCount,

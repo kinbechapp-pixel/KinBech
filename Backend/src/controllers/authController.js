@@ -2,6 +2,9 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const Otp = require('../models/Otp');
 const User = require('../models/User');
+const Listing = require('../models/Listing');
+const Report = require('../models/Report');
+const Shop = require('../models/Shop');
 const { normalizePhone } = require('../utils/phone');
 const { signUserToken, publicUser } = require('../utils/token');
 
@@ -269,4 +272,238 @@ async function getBlockedUsers(req, res, next) {
   }
 }
 
-module.exports = { signup, login, verifyOtp, me, updateMe, completeSignup, updatePreferences, getBlockedUsers };
+async function adminLogin(req, res, next) {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
+    const user = await User.findOne({ email, role: { $in: ['admin', 'super_admin', 'moderator', 'support'] } });
+    
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    const token = signUserToken(user);
+    return res.json({
+      token,
+      user: publicUser(user),
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getAllAdmins(req, res, next) {
+  try {
+    const admins = await User.find({ role: { $in: ['admin', 'super_admin', 'moderator', 'support'] } })
+      .select('name email role createdAt')
+      .sort({ createdAt: -1 });
+
+    const adminsWithAccess = admins.map(admin => ({
+      id: admin._id,
+      name: admin.name,
+      email: admin.email,
+      role: admin.role,
+      access: admin.role === 'super_admin' ? ['all'] :
+              admin.role === 'moderator' ? ['listings', 'reports'] :
+              admin.role === 'support' ? ['users', 'tickets'] : [],
+      createdAt: admin.createdAt,
+    }));
+
+    res.json({ admins: adminsWithAccess });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function createAdmin(req, res, next) {
+  try {
+    const { email, password, role, name } = req.body;
+
+    if (!email || !password || !role || !name) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    const existingAdmin = await User.findOne({ email });
+    if (existingAdmin) {
+      return res.status(409).json({ message: 'User with this email already exists' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const admin = await User.create({
+      email,
+      password: hashedPassword,
+      name,
+      role,
+      // Phone is optional for admin accounts
+    });
+
+    res.status(201).json({
+      message: 'Admin created successfully',
+      admin: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role,
+        createdAt: admin.createdAt,
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function deleteAdmin(req, res, next) {
+  try {
+    const { adminId } = req.params;
+
+    if (String(adminId) === String(req.user._id)) {
+      return res.status(400).json({ message: 'You cannot delete yourself' });
+    }
+
+    const admin = await User.findById(adminId);
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+
+    if (admin.role === 'super_admin') {
+      return res.status(403).json({ message: 'Cannot delete super admin' });
+    }
+
+    await User.findByIdAndDelete(adminId);
+
+    res.json({ message: 'Admin deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getDashboardStats(req, res, next) {
+  try {
+    const totalUsers = await User.countDocuments({ role: 'user' });
+    const activeListings = await Listing.countDocuments({ status: 'active' });
+    const pendingReports = await Report.countDocuments({ status: 'pending' });
+    const pendingShops = await Shop.countDocuments({ isVerified: false, status: 'active' });
+
+    // Get weekly listing data
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    const weeklyListings = await Listing.aggregate([
+      { 
+        $match: { 
+          createdAt: { $gte: weekAgo },
+          status: 'active'
+        } 
+      },
+      {
+        $group: {
+          _id: { $dayOfWeek: '$createdAt' },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // Convert to day names
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const weeklyData = dayNames.map((day, index) => {
+      const dayData = weeklyListings.find(d => d._id === (index + 1));
+      return { day, listings: dayData ? dayData.count : 0 };
+    });
+
+    res.json({
+      stats: {
+        totalUsers,
+        activeListings,
+        pendingReports,
+        pendingShops,
+      },
+      weeklyData
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getAllUsers(req, res, next) {
+  try {
+    const { status } = req.query;
+    const filter = { role: 'user' };
+
+    if (status === 'suspended') {
+      filter.status = 'suspended';
+    }
+
+    const users = await User.find(filter)
+      .select('name email phone profileComplete soldCount boughtCount createdAt status')
+      .sort({ createdAt: -1 })
+      .limit(100);
+
+    // Add listing counts
+    const userIds = users.map(u => u._id);
+    const listingCounts = await Listing.aggregate([
+      { $match: { seller: { $in: userIds }, status: 'active' } },
+      { $group: { _id: '$seller', count: { $sum: 1 } } }
+    ]);
+
+    const listingCountMap = {};
+    listingCounts.forEach(item => {
+      listingCountMap[item._id.toString()] = item.count;
+    });
+
+    const usersWithCounts = users.map(user => ({
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      sellerType: user.soldCount > 0 ? 'individual' : 'buyer',
+      joinDate: user.createdAt,
+      listingsCount: listingCountMap[user._id.toString()] || 0,
+      status: user.status === 'suspended' ? 'suspended' : (user.profileComplete ? 'verified' : 'unverified'),
+    }));
+
+    res.json({ users: usersWithCounts });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function updateUserStatus(req, res, next) {
+  try {
+    const { userId } = req.params;
+    const { action } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (action === 'suspend') {
+      user.status = 'suspended';
+    } else if (action === 'reinstate') {
+      user.status = 'active';
+    }
+
+    await user.save();
+
+    res.json({ 
+      message: 'User status updated successfully',
+      user: publicUser(user)
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = { signup, login, verifyOtp, me, updateMe, completeSignup, updatePreferences, getBlockedUsers, adminLogin, getAllAdmins, createAdmin, deleteAdmin, getDashboardStats, getAllUsers, updateUserStatus };

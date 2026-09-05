@@ -55,7 +55,12 @@ function MainTabs() {
       screenOptions={{ headerShown: false }}
     >
       <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Home' }} />
-      <Tab.Screen name="Explore" component={ExploreScreen} options={{ title: 'Explore' }} />
+      <Tab.Screen 
+        name="Explore" 
+        component={ExploreScreen} 
+        options={{ title: 'Explore' }}
+        initialParams={{ category: undefined }}
+      />
       <Tab.Screen name="Post" component={PostListingScreen} options={{ title: 'Sell' }} />
       <Tab.Screen name="Chats" component={ChatListScreen} options={{ title: 'Chats' }} />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />

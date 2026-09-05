@@ -60,13 +60,18 @@ const createStyles = (colors) => ({
     position: 'absolute',
     top: 8,
     right: 8,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.surface,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.95)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   distanceBadge: {
     flexDirection: 'row',
@@ -122,7 +127,7 @@ const createStyles = (colors) => ({
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
   },
   location: {
     fontSize: 10,
@@ -133,16 +138,26 @@ const createStyles = (colors) => ({
     alignItems: 'center',
     marginTop: 4,
   },
+  sellerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   sellerTypeIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: 'rgba(255,255,255,0.9)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   sellerTypeIconShop: {
     backgroundColor: 'rgba(99, 102, 241, 0.9)',
+  },
+  sellerName: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.textMuted,
   },
 });
 
@@ -163,6 +178,7 @@ const ProductCard = memo(function ProductCard({
   sharedId,
   sellerType,
   shopId,
+  sellerName,
 }) {
   const { colors } = useTheme();
   const styles = useThemedStyles(createStyles);
@@ -267,7 +283,7 @@ const ProductCard = memo(function ProductCard({
             >
               <Ionicons
                 name={saved ? 'heart' : 'heart-outline'}
-                size={16}
+                size={18}
                 color={saved ? colors.favorite : colors.textMuted}
               />
             </Pressable>
@@ -288,23 +304,33 @@ const ProductCard = memo(function ProductCard({
               )}
             </View>
           </View>
-          {location ? (
-            <View style={styles.locationRow}>
-              <Ionicons name="location-outline" size={12} color={colors.textSecondary} />
-              <Text style={styles.location} numberOfLines={1}>{location}</Text>
-            </View>
-          ) : null}
 
-          <View style={styles.footerRow}>
-            {sellerType === 'shop' && (
-              <View style={[styles.sellerTypeIcon, styles.sellerTypeIconShop]}>
-                <Ionicons name="storefront" size={10} color="#fff" />
+          {sellerType && sellerName && (
+            <View style={styles.footerRow}>
+              <View style={styles.sellerRow}>
+                {sellerType === 'shop' && (
+                  <View style={[styles.sellerTypeIcon, styles.sellerTypeIconShop]}>
+                    <Ionicons name="storefront-outline" size={8} color="#fff" />
+                  </View>
+                )}
+                {sellerType === 'individual' && (
+                  <View style={styles.sellerTypeIcon}>
+                    <Ionicons name="person-outline" size={8} color="#333" />
+                  </View>
+                )}
+                <Text style={styles.sellerName} numberOfLines={1}>{sellerName}</Text>
               </View>
-            )}
-            {sellerType === 'individual' && (
-              <View style={styles.sellerTypeIcon}>
-                <Ionicons name="person" size={10} color="#333" />
-              </View>
+            </View>
+          )}
+
+          <View style={styles.locationRow}>
+            <Ionicons name="location-outline" size={12} color={colors.textSecondary} />
+            <Text style={styles.location} numberOfLines={1}>{location || 'Location'}</Text>
+            {distanceLabel && (
+              <>
+                <Text style={styles.location}> • </Text>
+                <Text style={styles.location}>{distanceLabel}</Text>
+              </>
             )}
           </View>
         </View>

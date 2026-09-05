@@ -113,9 +113,59 @@ async function getMyReports(req, res, next) {
   }
 }
 
+async function getAllReports(req, res, next) {
+  try {
+    const { status } = req.query;
+    const filter = {};
+    
+    if (status) {
+      filter.status = status;
+    }
+
+    const reports = await Report.find(filter)
+      .populate('reporter', 'name phone avatarUrl')
+      .populate('reportedUser', 'name phone avatarUrl')
+      .populate('reportedListing', 'title photos')
+      .sort({ createdAt: -1 })
+      .limit(100);
+
+    res.json({ reports });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function updateReportStatus(req, res, next) {
+  try {
+    const { reportId } = req.params;
+    const { status, notes } = req.body;
+
+    const report = await Report.findById(reportId);
+    if (!report) {
+      return res.status(404).json({ message: 'Report not found' });
+    }
+
+    report.status = status || report.status;
+    report.notes = notes || report.notes;
+    report.resolvedBy = req.user._id;
+    report.resolvedAt = new Date();
+
+    await report.save();
+
+    res.json({ 
+      message: 'Report status updated successfully',
+      report
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   createReport,
   blockUser,
   unblockUser,
   getMyReports,
+  getAllReports,
+  updateReportStatus,
 };

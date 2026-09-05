@@ -4,8 +4,9 @@
   "private": true,
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "start": "echo '🔧 BACKEND API: http://localhost:5001' && node src/server.js",
+    "dev": "echo '🔧 BACKEND API: http://localhost:5001' && nodemon src/server.js",
+    "seed:admin": "node src/seedAdmin.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

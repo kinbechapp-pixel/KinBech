@@ -145,7 +145,7 @@ export default function AllCategoriesScreen({ navigation }) {
               <Pressable
                 key={item.label}
                 style={styles.card}
-                onPress={() => navigation.navigate(ROUTES.EXPLORE, { category: item.label })}
+                onPress={() => navigation.navigate(ROUTES.MAIN_TABS, { screen: ROUTES.EXPLORE, params: { category: item.label } })}
               >
                 <View style={[styles.iconCircle, { backgroundColor: item.bg }]}>
                   {item.iconSet === 'mci' ? (
